@@ -4,6 +4,35 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-05 — Experiment 2: days to plateau with real data only
+
+**Why:** The owner's goal is a learner ("OS") that gives scientists useful data earlier in an outbreak.
+The baseline it has to beat is how many days real data alone takes to reach its plateau.
+
+- Code: `src/outbreak_synth/run_days_to_plateau.py`, config `experiments/exp02_days_to_plateau.toml`,
+  output `results/exp02_days_to_plateau.json`. Logistic regression (the best small-N model in Exp. 1).
+- Day 0 = 2020-02-26, the first hospitalised COVID-19 record entered. On day d, train on every record entered up to day d.
+- Fixed test set: records entered 2020-07-01 to 2020-07-31 (93,635 patients, 31,431 deaths).
+- Gold standard: trained on every record we hold today except the test month (1,876,969). **AUC 0.776.**
+- Days with fewer than 10 deaths or 10 survivors are skipped (days 0–20: too few records to train at all).
+
+| Day | Date | Records so far | AUC | Gap to gold |
+|---:|---|---:|---:|---:|
+| 21 | 2020-03-18 | 88 | 0.711 | 0.065 |
+| 24 | 2020-03-21 | 306 | 0.721 | 0.055 |
+| 28 | 2020-03-25 | 1,084 | 0.740 | 0.036 |
+| **33** | **2020-03-30** | **2,824** | **0.757** | **0.019 (first day within 0.02)** |
+| 42 | 2020-04-08 | 8,425 | 0.760 | 0.016 |
+| 63 | 2020-04-29 | 27,880 | 0.764 | 0.011 |
+| 120 | 2020-06-25 | 156,923 | 0.771 | 0.005 |
+
+**Reading:** for this task, real data alone reaches its plateau about **one month** after the first record
+(day 33). After that it improves very slowly. For OS to be useful on COVID-19 in Brazil, it must
+produce useful data during **days 0–32**, especially days 0–20, when real data cannot train anything.
+That window is narrow, and the gold-standard AUC itself is modest (0.776) with these admission-time fields.
+
+---
+
 ## 2026-10-05 — Decisions and Experiment 1: real data only (no synthetic data)
 
 ### Decisions from the owner
