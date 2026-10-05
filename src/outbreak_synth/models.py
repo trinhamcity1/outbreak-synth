@@ -6,10 +6,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, StandardScaler
 
-from .data import CATEGORICAL, NUMERIC
+from . import data
 
 
-def make_model(name, seed):
+def make_model(name, seed, numeric=None, categorical=None):
+    NUMERIC = numeric or data.NUMERIC
+    CATEGORICAL = categorical or data.CATEGORICAL
     if name == "logreg":
         pre = ColumnTransformer([
             ("num", make_pipeline(SimpleImputer(strategy="median"), StandardScaler()), NUMERIC),

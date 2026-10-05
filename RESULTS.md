@@ -4,6 +4,65 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-05 — Outbreak library, H1N1 replay, and first test of learning from past outbreaks
+
+### Owner decisions
+- OS **learns** the new disease day by day. It generates synthetic data only once it judges that it understands
+  the disease well enough. So the daily score is OS's understanding (AUC on later real patients), and
+  synthetic data is checked once, when OS says it is ready.
+- Start with Brazilian respiratory outbreaks only; mpox, Ebola and others come later.
+
+### Outbreak library (`src/outbreak_synth/library.py` → `data/processed/library.parquet`, summary `results/library_summary.csv`)
+- New data: SRAG 2009–2012 and 2013–2018 CSVs, same ministry portal, CC-BY (`scripts/download_srag_historic.sh`, SHA-256 recorded).
+- Three form versions are harmonised to one schema: age, sex, race, state; 6 symptoms (fever, cough, sore throat,
+  shortness of breath, respiratory distress, low oxygen saturation); 10 comorbidities (cardiac, lung, renal,
+  immunosuppression, metabolic/diabetes, liver, neurological, obesity, postpartum, Down syndrome).
+  Each is `yes` / `no` / `missing`.
+- Mapping decisions (from the official dictionaries): age codes are `unit×1000 + value` on the old form;
+  states are IBGE numbers on the old form and letters on the new one; old "chronic metabolic disease" = new "diabetes".
+  On the 2009 pandemic form, `CLASSI_FIN 1` = new influenza subtype (H1N1pdm) and `EVOLUCAO 2` = death from influenza.
+- Patients: hospitalised, outcome cure (1) vs death (2). 2010–2012 are skipped: the 2012 file mixes two outcome
+  codings, and 2010–2011 are small.
+- 24 outbreaks, ~2.15M patients. Examples: H1N1 2009 21,123 (9.5% death, median age 24); flu seasons
+  1,257–11,824 each (13–19% death); other-virus seasons, mostly infants (median age 1, 3–7% death);
+  COVID 2020–22 1.97M (28–33% death, median age 57–70).
+- **Form effect:** the 2019+ form leaves 36–59% of yes/no fields blank, against 3–8% on the 2013–2018 form.
+  That is a difference in the form, not the disease, so OS must not read it as a disease trait.
+
+### Experiment 3: real data only, replayed day by day, on the shared fields (`run_replay_real.py`, `exp03_replay_real.toml`)
+| Outbreak | Test set | Gold AUC | First day with enough data | First day within 0.02 of gold |
+|---|---|---:|---|---|
+| H1N1 2009 | entries 2009-09-08 to 12-31: 8,128 (620 deaths) | 0.761 | day 27 (123 pts, AUC 0.596) | **day 56** (7,315 pts, 0.753) |
+| COVID 2020 | entries 2020-07: 93,635 (31,431 deaths) | 0.774 | day 21 (88 pts, 0.708) | **day 33** (2,824 pts, 0.756) |
+
+- The shared fields lose almost nothing for COVID (gold 0.774 vs 0.776 with the full field set in Exp. 2).
+- For H1N1, models from day 60 on beat the "gold" (0.771 vs 0.761) because the gold set includes 2010–2012
+  entries from a different phase. The gold standard is a reference, not a strict ceiling.
+
+### Experiment 4: does knowledge from past outbreaks help COVID early? (`run_prior_probe.py`, `exp04_prior_probe.toml`)
+Past library = every outbreak that ended before 2020 (H1N1 2009, flu and other-virus 2013–2019; 93,643 patients).
+
+| Day | COVID patients so far | New data only | Past outbreaks only | Past + new |
+|---:|---:|---:|---:|---:|
+| 0–20 | 1–15 | cannot train | 0.727 | cannot train |
+| 21 | 88 | 0.708 | 0.727 | 0.716 |
+| 24 | 306 | 0.717 | 0.727 | 0.720 |
+| 26 | 553 | 0.738 | 0.727 | 0.742 |
+| 28 | 1,084 | 0.740 | 0.727 | 0.742 |
+| 33 | 2,824 | 0.756 | 0.727 | 0.757 |
+
+**Plain reading:**
+- The past-only model scores 0.727 with zero COVID patients, but **ranking COVID patients by age alone also scores 0.727**.
+  So far, the past outbreaks are teaching only "older patients die more often", which is known on day 0 without any model.
+- Adding the past model's risk score to the new data helps a little on days 21–28 (+0.002 to +0.009) and does not move the plateau day (33).
+- **Death rate:** 11.5% in past outbreaks vs 33.6% in COVID. A generator built mainly from past outbreaks would understate
+  COVID deaths about three times over. OS has to learn the new disease's own severity from its early rows.
+- This is a negative first result for the simplest version of the idea. It does not rule out OS. It says the gain must come
+  from learning more than age from past outbreaks (e.g. which comorbidities matter and how much), from choosing which past
+  outbreaks to trust, and from learning the new disease's severity fast.
+
+---
+
 ## 2026-10-05 — Experiment 2: days to plateau with real data only
 
 **Why:** The owner's goal is a learner ("OS") that gives scientists useful data earlier in an outbreak.
