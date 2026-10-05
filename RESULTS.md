@@ -4,6 +4,54 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-05 — Decisions and Experiment 1: real data only (no synthetic data)
+
+### Decisions from the owner
+1. Task: in-hospital death among hospitalised COVID-19 patients (`CLASSI_FIN=5`, `HOSPITAL=1`,
+   `EVOLUCAO` 2 death vs 1 cure).
+2. The earliest N records are chosen by **data-entry date** (`DT_DIGITA`), not symptom onset.
+3. Test set: the **records entered right after the small sample** (owner: "earliest data point with
+   date entries"). Implemented as every record entered in the 30 days after the last training day.
+4. The "epsilon tuner" is the owner's separate `dp tuner` repo (differential privacy). It is out of scope here.
+
+### Setup
+- Code: `src/outbreak_synth/data.py`, `models.py`, `run_real_only.py`; config `experiments/exp01_real_only.toml`;
+  output `results/exp01_real_only.json`. Data: the four SRAG files listed above (release 23-03-2026).
+- Cohort 1,970,604 rows, ordered by entry date → onset date → notification id (deterministic).
+- Training pool: first 3,000 records (entered 2020-02-26 to 2020-03-31). Records entered on the
+  cutoff day after the 3,000th are left out of both sets.
+- **Test set: 26,245 records entered 2020-04-01 to 2020-04-30, 9,227 deaths (35.2%).** The same for every N.
+- Features (admission-time only, 25): age; sex, race, urban/rural zone, notifying state; 8 symptoms;
+  12 comorbidities; hospital-acquired infection. Each yes/no field becomes `yes` / `no` / `missing`
+  (blank or 9). ICU, ventilation, X-ray, antivirals and lab results are excluded because they happen
+  after admission and would leak the outcome. Four symptoms added to the form later in 2020 are excluded (>90% blank early).
+- Models: logistic regression (one-hot, standardised age); histogram gradient boosting (300 trees, lr 0.05).
+- 95% CI: 1,000 bootstrap resamples of the test set. Both models turned out deterministic for a
+  fixed training set, so seeds do not change these numbers. Seed variance will come in with the generators.
+- Reference ceiling: trained on 537,778 records entered **after** the test window (May–Dec 2020). This is
+  future data, so it is only an upper reference, not something available during an outbreak.
+
+### Results: test AUC (95% bootstrap CI)
+
+| Train N | Deaths in train | Logistic regression | Gradient boosting |
+|---:|---:|---|---|
+| 100 | 39 | 0.728 (0.722–0.734) | 0.720 (0.714–0.727) |
+| 300 | 110 | 0.738 (0.732–0.744) | 0.709 (0.703–0.716) |
+| 1,000 | 333 | 0.783 (0.777–0.788) | 0.756 (0.750–0.762) |
+| 3,000 | 902 | 0.797 (0.792–0.802) | 0.774 (0.768–0.780) |
+| Reference (537,778) | 177,830 | 0.807 (0.802–0.812) | 0.815 (0.811–0.821) |
+
+### What this means
+- **The room for synthetic data to help is small.** With 3,000 real records, logistic regression is
+  already 0.010 below its ceiling and 0.018 below the best ceiling (0.815). It is within the brief's
+  "0.02 of full data" target at N = 3,000 without any synthetic data.
+- The real room is at **N = 100–300** (0.07–0.09 below the ceiling), and at N = 1,000 for gradient boosting (0.06).
+  That is where the generator comparison is worth running.
+- Logistic regression beats gradient boosting at every small N, which matches the JMIR sample-size study cited in the brief.
+- I have not fitted the power-law learning curve yet. Four points are too few for it to mean much on its own; I'll fit it once the generator runs add points.
+
+---
+
 ## 2026-10-05 — Step 1: data inspection (no models trained)
 
 **Script:** `PYTHONPATH=src python -m outbreak_synth.inspect_srag` → `results/inspect_srag.json`

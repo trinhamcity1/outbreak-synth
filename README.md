@@ -18,6 +18,7 @@ Status and numbers live in [RESULTS.md](RESULTS.md).
 pip install -r requirements.txt
 ./scripts/download_srag.sh                 # ~260 MB, Brazilian SIVEP-Gripe SRAG 2019-2022
 PYTHONPATH=src python -m outbreak_synth.inspect_srag
+PYTHONPATH=src python -m outbreak_synth.run_real_only experiments/exp01_real_only.toml
 ```
 
 ## Data sources
