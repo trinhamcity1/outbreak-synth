@@ -33,5 +33,9 @@ PYTHONPATH=src python -m outbreak_synth.run_prior_probe experiments/exp04_prior_
   Datasets `srag-2009-2012` and `srag-2013-2018` (CC-BY) for the historic outbreaks.
 
 ## What we are building (OS)
-A learner that has studied past outbreaks, is fed a new disease's records day by day, says when it
-understands the disease well enough, and only then generates synthetic patient data for it.
+Outbreak Synth is a general method: it studies the past, follows something new day by day, says when
+it understands it well enough, and only then generates synthetic data. Two case studies:
+1. Early outbreak data (in progress): Brazilian SRAG outbreaks 2009-2022.
+2. Vaccine side-effect signals (planned): replay known signals week by week.
+
+Plain-language plan: [docs/outbreak-synth-plan.pdf](docs/outbreak-synth-plan.pdf) (built by `scripts/make_plan_pdf.py`).
