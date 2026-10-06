@@ -196,3 +196,23 @@ def offline_variants(name):
               f"median day {g.green_day.median()}; COVID 2020 green day {g.set_index('outbreak').loc['covid_2020','green_day']}")
         print("false greens:", g[g.false_green].to_dict("records"))
         t.to_csv(Path("results", f"{name}_variant_{label.split()[0]}{'' if E is None else E}.csv"), index=False)
+
+
+def final_paths(name, E=20, m=20, s=0.98):
+    """OS's final rule on the logged Exp. 8 replay: kin, or age_trend until E fresh deaths when fob's pathogen
+    group has no earlier member. Returns {outbreak: (per-day frame with chosen/auc_os/stability, green day)}."""
+    outs = json.loads(Path("results", f"{name}.json").read_text())["outbreaks"]
+    fam = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+    res = {}
+    for f, r in outs.items():
+        d = frame(r)
+        new_group = not any(fam(k) == fam(f) for k in r["info"]["kin"])
+        ch = ["age_trend" if (new_group and fd < E) else "kin" for fd in d.fresh_deaths]
+        d = d.assign(chosen=ch, auc_os=[d.loc[i, f"auc_{c}"] for i, c in zip(d.index, ch)])
+        st = []
+        for i in range(len(d)):
+            j = np.where(d.day.to_numpy() == d.day.iloc[i] - 8)[0]
+            st.append(d.iloc[i][f"stab_{ch[i]}__{ch[j[0]]}"] if len(j) else np.nan)
+        d = d.assign(stability=st)
+        res[f] = (d, green_day(d, m, s), new_group)
+    return res
