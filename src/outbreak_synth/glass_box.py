@@ -13,7 +13,7 @@ from sklearn.metrics import roc_auc_score
 from .library import OUT as LIB, TARGET, YESNO
 from .os_core import build_state, risk
 from .recipe import design, fit_map
-from .synth import band, generate, LO, HI
+from .synth import band, generate_chain, LO, HI
 
 LABELS = {"FEBRE": "fever", "TOSSE": "cough", "GARGANTA": "sore throat", "DISPNEIA": "shortness of breath",
           "DESC_RESP": "respiratory distress", "SATURACAO": "low oxygen saturation", "CARDIOPATI": "heart disease",
@@ -136,7 +136,7 @@ def report(fob, day=None, lib=None):
     if not green:
         out.append("<p><b>Not released.</b> OS releases synthetic data only after the Green Light.</p>")
     else:
-        syn = generate(s, 20000, seed=0)
+        syn = generate_chain(s, 20000, seed=0)
         rb, sb = band(rec.age.fillna(rec.age.median())), band(syn.age)
         rows = [{"measure": "patients", "real (seen by OS)": f"{len(rec):,}", "synthetic": f"{len(syn):,}"},
                 {"measure": "median age", "real (seen by OS)": f"{rec.age.median():.0f}", "synthetic": f"{syn.age.median():.0f}"},
@@ -150,8 +150,8 @@ def report(fob, day=None, lib=None):
                 rows.append({"measure": f"{LABELS[f]} recorded", "real (seen by OS)": f"{(rec[f] == 'yes').mean():.1%}", "synthetic": f"{(syn[f] == 'yes').mean():.1%}"})
         out += [f"<p>Released: synthetic patients drawn from OS's Two-Part Recipe. Every row is labelled <code>synthetic=True</code> with this "
                 f"provenance: <i>{html.escape(syn.synth_source.iloc[0])}</i></p>", table(pd.DataFrame(rows)),
-                "<p class='note'>Known limitation: within an age band, symptoms and conditions are drawn independently, so links between them "
-                "(e.g. shortness of breath with low oxygen) are weaker than in real data.</p>"]
+                "<p class='note'>Symptoms and conditions are drawn as a dependency chain (each given age band, sex and the fields drawn before it), "
+                "which keeps links such as shortness of breath with low oxygen (Exp. 10).</p>"]
 
     # Replay check (hindsight)
     info = __import__("json").loads(Path("results/exp08_os_replay.json").read_text())["outbreaks"][fob]["info"]

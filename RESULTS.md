@@ -4,6 +4,45 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Links between symptoms: dependency-chain generator (Exp. 10)
+
+**Code:** `synth.py` (`fit_chain`, `generate_chain`); config `experiments/exp10_synth_chain.toml`. Same outbreaks,
+green days, seed and 50,000 rows as Exp. 9; CTGAN not rerun. Output: `results/exp10_synth_chain.json`.
+The Glass Box reports now use this generator.
+
+**Method:** the 16 yes/no fields are drawn one after another, in a fixed clinical order (symptoms, then conditions).
+Each is drawn from a logistic model on age band, sex and every field drawn before it. Each link model is fitted
+like OS's Severity Model:
+- prior = vote-weighted chain coefficients of the relatives (only relatives whose form collected both fields);
+- strength 10 × (1 − Stranger), with a weak pull to 0 where that falls below 1;
+- no borrowing on the new-pathogen-group fallback;
+- a field fob's form did not collect is always "no".
+
+### Results (mean over 22 outbreaks)
+| Measure | Independent (Exp. 9) | Chain (Exp. 10) | Natural drift: early vs later real |
+|---|---:|---:|---:|
+| Worst link gap vs later real patients | 0.311 | **0.154** | 0.281 |
+| Mean link gap vs later real patients | 0.044 | **0.032** | 0.053 |
+| Worst link gap vs real records OS had | 0.389 | 0.273 | – |
+| Yes/no rate gap vs real records OS had | 0.009 | **0.001** | – |
+| AUC, trained on OS synthetic only | 0.795 | 0.795 | – |
+| AUC, real records + OS synthetic | 0.795 | 0.795 | – |
+| Synthetic only at least as good as real alone | 22 of 22 | 20 of 22 | – |
+
+- **Links vs later real patients improve in 22 of 22 outbreaks.** For the 6 outbreaks with at least 1,000 real
+  records on the green day, the chain's link gaps against later patients are about the same as the real data's own
+  drift. For example, COVID 2020: worst gap 0.115 vs drift 0.119 (was 0.363).
+- **Against the small real samples OS had,** the worst gap stays high for some outbreaks (other virus 2014–2016:
+  about 0.5–0.58). Their real correlations come from 100–550 patients and are noisy. Against the larger later
+  samples, the chain does better.
+- **AUC is unchanged on average** (largest single drop 0.007). The two outbreaks where synthetic-only now falls just
+  under real-only are flu 2022 (0.769 vs 0.775) and COVID 2022 (0.742 vs 0.743).
+
+**Plain reading:** the chain fixes the generator's main weakness. Links between symptoms and conditions are now as
+realistic as the real data's own change over time, with no loss of usefulness.
+
+---
+
 ## 2026-10-07 — Step 4: Synth Release + Glass Box Report (Exp. 9)
 
 **Code:**

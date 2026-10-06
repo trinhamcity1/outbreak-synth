@@ -38,6 +38,7 @@ PYTHONPATH=src python -c "from outbreak_synth.analyse_os2 import offline_variant
 python3 -m venv .venv-ctgan && .venv-ctgan/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch==2.14.1 \
   && .venv-ctgan/bin/pip install -r requirements-ctgan.txt          # isolated env for the CTGAN baseline
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp09_synth_release.toml   # ~45 min
+PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10_synth_chain.toml   # dependency-chain generator
 PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 44   # Glass Box reports -> reports/
 ```
 
