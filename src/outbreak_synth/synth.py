@@ -134,3 +134,91 @@ def compare(a, b):
             "yes_rate_mean_abs_diff": float(yes_diff.mean()), "yes_rate_max_abs_diff": float(yes_diff.max()),
             "yes_rate_worst_field": yes_diff.idxmax(),
             "corr_mean_abs_diff": float(cd.mean()), "corr_max_abs_diff": float(cd.max())}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Dependency chain for symptoms and conditions (Exp. 10). Fields are generated in CHAIN_ORDER; each one from a
+# logistic model on age band, sex and every field generated before it, so pairwise links are kept. Each link model
+# is fitted like OS's Severity Model: prior = vote-weighted relatives' chain coefficients (only relatives whose
+# form collected the field and the conditioning field), strength lam0 * (1 - Stranger); where that falls below the
+# floor, a weak pull to 0 instead; no borrowing on the new-pathogen-group fallback.
+CHAIN_ORDER = ["FEBRE", "TOSSE", "GARGANTA", "DISPNEIA", "DESC_RESP", "SATURACAO", "CARDIOPATI", "METABOLIC",
+               "OBESIDADE", "RENAL", "PNEUMOPATI", "IMUNODEPRE", "NEUROLOGIC", "HEPATICA", "PUERPERA", "SIND_DOWN"]
+
+
+def chain_design(bands, male, prev):
+    """bands: int array; male: 0/1 array; prev: (n, j) 0/1 matrix of fields already generated."""
+    return np.column_stack([np.eye(NB)[bands][:, 1:], male[:, None], prev]).astype(float)
+
+
+def _chain_inputs(df):
+    b = band(df.age.fillna(df.age.median() if df.age.notna().any() else 40))
+    male = (df.CS_SEXO == "M").to_numpy().astype(float)
+    Y = np.column_stack([(df[f] == "yes").to_numpy() for f in CHAIN_ORDER]).astype(float)
+    return b, male, Y
+
+
+def fit_chain(state, lam0=10.0, lam_floor=1.0, max_kin_rows=20000):
+    from .recipe import fit_map
+    b, male, Y = _chain_inputs(state.records)
+    collected_fob = [(state.records[f] == "missing").mean() < 0.9 for f in CHAIN_ORDER]
+    borrow = state.recipe != "age_trend"
+    kin_fits = {}
+    if borrow:
+        for k, kd in state.kin_profiles.items():
+            if state.votes.get(k, 0) <= 0:
+                continue
+            kd = kd.sample(min(len(kd), max_kin_rows), random_state=0)
+            kb, km, kY = _chain_inputs(kd)
+            coll = [(kd[f] == "missing").mean() < 0.9 for f in CHAIN_ORDER]
+            fits = []
+            for j in range(len(CHAIN_ORDER)):
+                if not coll[j] or kY[:, j].sum() == 0:
+                    fits.append(None)
+                    continue
+                fits.append(fit_map(chain_design(kb, km, kY[:, :j]), kY[:, j], lam=1.0))
+            kin_fits[k] = (fits, coll)
+    models = []
+    for j, f in enumerate(CHAIN_ORDER):
+        Z = chain_design(b, male, Y[:, :j])
+        p = Z.shape[1]
+        mu, have = np.zeros(p), np.zeros(p, bool)
+        if borrow and kin_fits:
+            num, den = np.zeros(p), np.zeros(p)
+            for k, (fits, coll) in kin_fits.items():
+                if fits[j] is None:
+                    continue
+                ok = np.ones(p, bool)
+                ok[NB - 1:] = [True] + [coll[i] for i in range(j)]  # sex column (NB-1), then earlier fields
+                w = state.votes[k]
+                num[ok] += w * fits[j][1][ok]
+                den[ok] += w
+            have = den > 0
+            mu[have] = num[have] / den[have]
+        lam = np.where(have, lam0 * (1 - state.stranger), lam0)
+        weak = lam < lam_floor
+        mu, lam = np.where(weak, 0.0, mu), np.maximum(lam, lam_floor)
+        if not collected_fob[j]:
+            models.append(None)  # fob's form did not collect it: always "no"
+            continue
+        models.append(fit_map(Z, Y[:, j], mu=mu, lam=lam))
+    return models
+
+
+def generate_chain(state, n, seed=0, alpha=10.0):
+    """Like generate(), but symptoms and conditions come from the dependency chain."""
+    from scipy.special import expit
+    df = generate(state, n, seed=seed, alpha=alpha)  # age, sex, state, race (and placeholders)
+    rng = np.random.default_rng(seed + 1)
+    models = fit_chain(state)
+    b = band(df.age)
+    male = (df.CS_SEXO == "M").to_numpy().astype(float)
+    Y = np.zeros((n, len(CHAIN_ORDER)))
+    for j, f in enumerate(CHAIN_ORDER):
+        if models[j] is not None:
+            c0, c = models[j]
+            Y[:, j] = rng.random(n) < expit(c0 + chain_design(b, male, Y[:, :j]) @ c)
+        df[f] = np.where(Y[:, j] > 0, "yes", "no")
+    df[TARGET] = (rng.random(n) < risk(state, df)).astype(int)
+    df["synth_source"] = df.synth_source.str.replace("seed=", "profile=dependency chain; seed=", regex=False)
+    return df

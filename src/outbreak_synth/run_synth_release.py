@@ -26,7 +26,7 @@ from .library import OUT as LIB, TARGET, YESNO
 from .os_core import build_state, risk
 from .analyse_os2 import final_paths
 from .recipe import design, fit_map
-from .synth import compare, generate
+from .synth import compare, generate, generate_chain
 
 OUTDIR = Path("data/synthetic")
 
@@ -60,11 +60,27 @@ def main(cfg_path):
         dd = (s.later.DT_DIGITA - s.t0).dt.days
         test = s.later[(dd >= lo) & (dd <= hi)]
         early = s.records
-        syn = generate(s, cfg["n_rows"], seed=cfg["seed"])
-        p_os = OUTDIR / "os" / f"SYNTHETIC_os_{fob}_day{gday}.parquet"
+        gen = generate_chain if cfg.get("profile_model", "independent") == "chain" else generate
+        syn = gen(s, cfg["n_rows"], seed=cfg["seed"])
+        tag = "os_chain" if gen is generate_chain else "os"
+        p_os = OUTDIR / "os" / f"SYNTHETIC_{tag}_{fob}_day{gday}.parquet"
         syn.to_parquet(p_os, index=False)
         manifest.append({"file": str(p_os), "rows": len(syn), "sha256": sha(p_os), "provenance": syn.synth_source.iloc[0]})
 
+        if not cfg.get("ctgan", True):
+            r = {"green_day": gday, "recipe": s.recipe, "early_n": len(early), "early_deaths": int(early[TARGET].sum()),
+                 "test_n": len(test), "test_deaths": int(test[TARGET].sum()),
+                 "fidelity": {"os_vs_early": compare(early, syn), "os_vs_later": compare(test, syn), "early_vs_later": compare(test, early)},
+                 "auc": {"gold": info[fob]["info"]["gold_auc"], "age_only": info[fob]["info"]["age_only_auc"],
+                         "os_model": float(roc_auc_score(test[TARGET], risk(s, test))), "real_early": ridge_auc(early, test),
+                         "os_synth_only": ridge_auc(syn, test),
+                         "real_plus_os_synth": ridge_auc(pd.concat([early, syn[early.columns.intersection(syn.columns)]]), test)}}
+            results[fob] = r
+            print(f"{fob}: day {gday} | OS-synth AUC {r['auc']['os_synth_only']:.3f} | corr gap vs early "
+                  f"{r['fidelity']['os_vs_early']['corr_mean_abs_diff']:.3f} / {r['fidelity']['os_vs_early']['corr_max_abs_diff']:.3f}", flush=True)
+            Path("results", f"{cfg['name']}.json").write_text(json.dumps({"config": cfg, "outbreaks": results}, indent=2, default=str))
+            Path("results", f"{cfg['name']}_manifest.json").write_text(json.dumps(manifest, indent=2))
+            continue
         cols = ["age", "CS_SEXO", "CS_RACA", "SG_UF_NOT"] + YESNO + [TARGET]
         inp = early[cols].copy()
         for f in YESNO:
