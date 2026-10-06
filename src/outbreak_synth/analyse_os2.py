@@ -149,3 +149,50 @@ def main(name):
 
 if __name__ == "__main__":
     main(sys.argv[1])
+
+
+def offline_variants(name):
+    """Two offline variants on the logged Exp. 8 replay:
+    A. always kin (the rule leave-one-outbreak-out picked for nearly every outbreak), with the Green Light;
+    B. pathogen-label fallback: if fob's pathogen group (flu incl. H1N1 / other virus / COVID) has no earlier
+       member in the Atlas, use age_trend until E fresh deaths, then kin. The label is external information a lab
+       has on day 0 (e.g. "a new coronavirus"); it is not learned from fob's records."""
+    outs = json.loads(Path("results", f"{name}.json").read_text())["outbreaks"]
+    fam = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+    gold = {f: r["info"]["gold_auc"] for f, r in outs.items()}
+    age = {f: r["info"]["age_only_auc"] for f, r in outs.items()}
+    pd.set_option("display.width", 250)
+    for label, E in [("A always kin", None), ("B label fallback E=20", 20), ("B label fallback E=100", 100)]:
+        rows, final = [], {}
+        for f, r in sorted(outs.items()):
+            d = frame(r)
+            new_group = not any(fam(k) == fam(f) for k in r["info"]["kin"])
+            if E is None or not new_group:
+                ch = ["kin"] * len(d)
+            else:
+                ch = ["age_trend" if fd < E else "kin" for fd in d.fresh_deaths]
+            d = d.assign(chosen=ch, auc_os=[d.loc[i, f"auc_{c}"] for i, c in zip(d.index, ch)])
+            st = []
+            for i in range(len(d)):
+                j = np.where(d.day.to_numpy() == d.day.iloc[i] - 8)[0]
+                st.append(d.iloc[i][f"stab_{ch[i]}__{ch[j[0]]}"] if len(j) else np.nan)
+            d = d.assign(stability=st)
+            final[f] = d
+            rows.append({"outbreak": f, "new_group": new_group, **{f"d{k}": round(float(d.loc[d.day == k, "auc_os"].iloc[0]), 3) for k in CHECK},
+                         "age_only": round(age[f], 3), "plateau_os": first_day(d, "auc_os", gold[f]),
+                         "days_below_age": int((d.auc_os < age[f] - 1e-9).sum() * 2), "gap": round(float((gold[f] - d.auc_os).mean()), 4)})
+        t = pd.DataFrame(rows)
+        gl = []
+        for f, d in final.items():
+            gd = green_day(d, 20, 0.98)
+            auc = float(d.loc[d.day == gd, "auc_os"].iloc[0]) if gd is not None else None
+            gl.append((f, gd, auc, gd is not None and gold[f] - auc > TOL))
+        g = pd.DataFrame(gl, columns=["outbreak", "green_day", "auc_at_green", "false_green"])
+        print(f"\n== {label}: mean gap {t.gap.mean():.4f}; outbreaks ever below age only {int((t.days_below_age > 0).sum())}; "
+              f"total days below age {int(t.days_below_age.sum())}; at least age-only by day "
+              f"{ {k: int((t[f'd{k}'] >= t.age_only - 1e-9).sum()) for k in CHECK} }")
+        print(t[t.new_group | (t.days_below_age > 0)].to_string(index=False))
+        print(f"Green Light (m=20, s=0.98): greens {g.green_day.notna().sum()}, false {g.false_green.sum()}, "
+              f"median day {g.green_day.median()}; COVID 2020 green day {g.set_index('outbreak').loc['covid_2020','green_day']}")
+        print("false greens:", g[g.false_green].to_dict("records"))
+        t.to_csv(Path("results", f"{name}_variant_{label.split()[0]}{'' if E is None else E}.csv"), index=False)

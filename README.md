@@ -32,6 +32,9 @@ PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp05b_ki
 PYTHONPATH=src python -m outbreak_synth.analyse_kinship exp05b_kinship_replay
 PYTHONPATH=src python -m outbreak_synth.run_os_replay experiments/exp07_os_replay.toml   # ~25 min
 PYTHONPATH=src python -m outbreak_synth.analyse_os exp07_os_replay
+PYTHONPATH=src python -m outbreak_synth.run_os_replay2 experiments/exp08_os_replay.toml   # ~40 min
+PYTHONPATH=src python -m outbreak_synth.analyse_os2 exp08_os_replay
+PYTHONPATH=src python -c "from outbreak_synth.analyse_os2 import offline_variants; offline_variants('exp08_os_replay')"
 ```
 
 ## Data sources

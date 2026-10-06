@@ -4,6 +4,93 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Step 3, round 2: age recipes, safety alarm, Green Light redone (Exp. 8)
+
+**Code:** `run_os_replay2.py`, `analyse_os2.py` (incl. `offline_variants`); config `experiments/exp08_os_replay.toml`
+(same settings as Exp. 7). Outputs: `results/exp08_os_replay*.{json,csv}`. Runtime about 40 minutes.
+
+### What was added
+- **Two recipes:**
+  - kin_age borrows only the age-band pattern from the voted relatives;
+  - age_trend uses one smooth age term whose slope prior is the median relative's slope. Whenever the slope is
+    positive it ranks exactly like "rank by age", but it also gives risk numbers.
+- **Safety alarm** (the Fresh-Days Check repurposed): candidates compared by AUC on fob's fresh records (each week
+  predicted by a model fitted on earlier weeks), pooled over complete weeks. The default recipe, the minimum number
+  of fresh deaths before switching, and the recipes allowed to compete are chosen by leave-one-outbreak-out.
+- **Stability logged for every pair of recipes,** so the Green Light follows whatever the final rule uses. The
+  light cannot be green while OS is on the age_trend fallback.
+
+### Result 1: neither new recipe nor the outcome-based alarm beats plain kin borrowing
+| Always use | Mean gap to gold, days 0–90 |
+|---|---:|
+| **kin** | **0.0046** |
+| consensus | 0.011 |
+| kin_age | 0.022 |
+| age_trend | 0.065 |
+| own | 0.082 |
+
+- The best alarm rule (switch after 100 fresh deaths) scores 0.0047, so it adds nothing.
+- Leave-one-outbreak-out picked "always kin" for nearly every outbreak. The one variant it picked for COVID switched
+  to age_trend on days 28–34, exactly when kin had overtaken age, which pushed COVID's plateau from 28 to 36.
+- **Why the alarm cannot help early:** it needs outcomes. COVID 2020 has at most 1 fresh death up to day 20 and 8 by
+  day 26, so no outcome-based check can tell in weeks 0–3 that borrowing from flu is wrong.
+- kin_age did help flu 2013 early (smoke test: 0.705 vs 0.671 on day 8) but is worse overall.
+
+### Result 2: a pathogen-label fallback fixes the truly new cases
+Rule: if fob's pathogen group (flu including H1N1 / other virus / COVID) has no earlier member in the Atlas, use
+age_trend until 20 fresh deaths, then kin. The label ("a new kind of virus") is external information a lab has on
+day 0; it is not learned from fob's records.
+
+| | Always kin | Label fallback (E = 20) |
+|---|---:|---:|
+| Mean gap to gold | 0.0046 | **0.0040** |
+| Outbreaks ever below age only | 6 | 4 |
+| Total days below age only (23 outbreaks × 90 days) | 110 | 64 |
+| At least as good as age only on day 0 / 14 / 28+ | 17 / 19 / 23 | 19 / 21 / 23 |
+| **COVID 2020, days 0–26** | 0.685–0.743 (24 days below age) | **0.727, never below age** |
+| COVID 2020 plateau (real data alone: 34) | day 28 | day 28 |
+| other virus 2013, days 0–28 | 0.714–0.775 (22 days below) | 0.747, never below |
+
+- **Caveat:** only 2 outbreaks are a "new group" (COVID 2020 and other virus 2013), so E = 20 is a judgement call,
+  not a tuned value. E = 100 left other virus 2013 on age_trend for all 90 days.
+- **Still below age only on some days:**
+  - flu 2013, 20 days: H1N1 is a same-group but misleading relative, so the label does not trigger;
+  - flu 2021, 24 days, by about 0.01: here age only (0.798) beats even gold (0.774);
+  - COVID 2021, 6 days around day 0;
+  - other virus 2015, 14 days, by about 0.01.
+
+### Result 3: Green Light, redone on the final rule
+Rule: at least 20 deaths, and risk-score stability of at least 0.98 vs 8 days earlier, on two checks in a row, and
+not on the age_trend fallback. (m, s) = (20, 0.98) was the leave-one-outbreak-out choice for 22 of 23 outbreaks.
+
+| Rule path | Greens within 90 days | False greens | Median green day | COVID 2020 green |
+|---|---:|---:|---:|---|
+| Always kin | 22 of 23 | **0** | 40 | day 44 (AUC 0.757 vs gold 0.767) |
+| Label fallback (E = 20) | 22 of 23 | **0** | 40 | day 44 |
+
+- The only outbreak never green is other virus 2013.
+- On the leave-one-outbreak-out rule path (`analyse_os2.main`): 22 greens, 1 false (other virus 2017, day 36: 0.774
+  vs gold 0.796), median day 37.
+
+### Plain reading
+- **OS's current best form:**
+  - borrow from voted relatives;
+  - start on the age trend when the lab says the pathogen group is new;
+  - turn green after 20 deaths once the risk ranking stops moving.
+- In replays this was never worse than "rank by age" for a new pathogen group, and gave **no false green lights**
+  across 22 outbreaks.
+- **COVID 2020 under this rule:** OS matches age only for days 0–26, reaches the plateau on day 28 (real data alone:
+  34), and turns green on day 44.
+- **What did not work:**
+  - outcome-based safety checks, which come too late because the early days have almost no deaths;
+  - borrowing only the age pattern;
+  - borrowing only what relatives agree on.
+- **Open:**
+  - a misleading relative within the same group (H1N1 for the 2013 flu season) is still not caught early;
+  - the label-fallback evidence rests on only 2 new-group outbreaks.
+
+---
+
 ## 2026-10-07 — Step 3: Fresh-Days Check, consensus fallback, Green Light (Exp. 5b, Exp. 7)
 
 **Code:**
