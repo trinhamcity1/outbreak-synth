@@ -1,0 +1,135 @@
+"""Time Machine Replay of the Kinship Vote and Stranger Flag over every outbreak in the Atlas.
+
+For each target outbreak (fob) with at least one earlier outbreak in the Atlas:
+  * kin candidates = earlier outbreaks, using only their records entered before fob's day 0;
+  * every week, score fob's new records with each candidate (profile + severity) and with the Stranger;
+  * hindsight answer = the kin that fits fob's FULL record set best (per patient), and the novelty gap
+    = how much better fob's own model fits than that best kin (cross-validated).
+Outputs results/<name>.json and a per-week table results/<name>_weeks.csv.
+Usage: PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp05_kinship_replay.toml"""
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import KFold
+
+from .kinship import (Profile, bernoulli_logpmf, encode, fit_offset, fit_risk, risk_logit, votes_from_scores)
+from .library import OUT as LIB, TARGET
+
+
+def day0_of(df, name):
+    year = int(name.split("_")[-1])
+    return max(df.DT_DIGITA.min(), pd.Timestamp(f"{year}-01-01"))
+
+
+def kin_models(lib, starts, fob, cfg):
+    t0 = starts[fob]
+    kins = {}
+    for k, kd in lib.groupby("outbreak"):
+        if starts[k] >= t0:
+            continue
+        kd = kd[kd.DT_DIGITA < t0]
+        if len(kd) < cfg["min_kin_rows"] or kd[TARGET].sum() < cfg["min_kin_deaths"]:
+            continue
+        if len(kd) > cfg["max_fit_rows"]:
+            kd = kd.sample(cfg["max_fit_rows"], random_state=0)
+        age, sex, yes, X = encode(kd)
+        kins[k] = (Profile().fit(age, sex, yes), fit_risk(X, kd[TARGET].to_numpy(), C=1.0), len(kd))
+    return kins
+
+
+def hindsight(fob_df, kins, cfg):
+    """Per-patient fit of each kin on fob's full data, and fob's own cross-validated fit (novelty gap)."""
+    d = fob_df.sample(min(len(fob_df), cfg["max_fit_rows"]), random_state=0)
+    age, sex, yes, X = encode(d)
+    y = d[TARGET].to_numpy()
+    per = {}
+    for k, (prof, risk, _) in kins.items():
+        base = risk_logit(risk, X)
+        b = fit_offset(base, y)
+        per[k] = {"profile": float(prof.logpdf(age, sex, yes).mean()),
+                  "severity": float(bernoulli_logpmf(base + b, y).mean())}
+        per[k]["total"] = per[k]["profile"] + per[k]["severity"]
+    own_p, own_s = [], []
+    for tr, te in KFold(5, shuffle=True, random_state=0).split(X):
+        own_p.append(Profile().fit(age[tr], sex[tr], yes[tr]).logpdf(age[te], sex[te], yes[te]))
+        own_s.append(bernoulli_logpmf(risk_logit(fit_risk(X[tr], y[tr], C=cfg["own_C"]), X[te]), y[te]))
+    own = {"profile": float(np.concatenate(own_p).mean()), "severity": float(np.concatenate(own_s).mean())}
+    own["total"] = own["profile"] + own["severity"]
+    return per, own
+
+
+def replay(fob_df, kins, cfg):
+    t0 = fob_df.DT_DIGITA.min()
+    week = ((fob_df.DT_DIGITA - t0).dt.days // 7).to_numpy()
+    age, sex, yes, X = encode(fob_df)
+    y = fob_df[TARGET].to_numpy()
+    base = {k: risk_logit(r, X) for k, (_, r, _) in kins.items()}
+    prof_ll = {k: p.logpdf(age, sex, yes) for k, (p, _, _) in kins.items()}
+    names = list(kins) + ["STRANGER"]
+    cum = {part: dict.fromkeys(names, 0.0) for part in ("profile", "severity")}
+    rows = []
+    for w in range(cfg["weeks"]):
+        past, now = week < w, week == w
+        if not now.any():
+            continue
+        yp = y[past]
+        for k in kins:
+            b = fit_offset(base[k][past], yp)
+            cum["profile"][k] += prof_ll[k][now].sum()
+            cum["severity"][k] += bernoulli_logpmf(base[k][now] + b, y[now]).sum()
+        # Stranger: fob's own earlier records only (flat start when there are none).
+        own_prof = Profile().fit(age[past], sex[past], yes[past])
+        cum["profile"]["STRANGER"] += own_prof.logpdf(age[now], sex[now], yes[now]).sum()
+        own_risk = fit_risk(X[past], yp, C=cfg["own_C"]) if past.sum() >= cfg["own_min_rows"] else None
+        if own_risk is not None:
+            lg = risk_logit(own_risk, X[now])
+        else:  # base rate with a weak prior
+            r = (yp.sum() + 1) / (len(yp) + 2)
+            lg = np.full(now.sum(), np.log(r / (1 - r)))
+        cum["severity"]["STRANGER"] += bernoulli_logpmf(lg, y[now]).sum()
+        total = {n: cum["profile"][n] + cum["severity"][n] for n in names}
+        rows.append({"week": w, "n_so_far": int((week <= w).sum()), "deaths_so_far": int(y[week <= w].sum()),
+                     **{f"score_total::{n}": total[n] for n in names},
+                     **{f"score_profile::{n}": cum["profile"][n] for n in names},
+                     **{f"score_severity::{n}": cum["severity"][n] for n in names}})
+    return rows
+
+
+def main(cfg_path):
+    cfg = tomllib.loads(Path(cfg_path).read_text())
+    lib = pd.read_parquet(LIB)
+    starts = {}
+    parts = {}
+    for name, d in lib.groupby("outbreak"):
+        t0 = day0_of(d, name)
+        parts[name] = d[d.DT_DIGITA >= t0].sort_values(["DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable")
+        starts[name] = t0
+    out, week_rows = {}, []
+    for fob in sorted(parts, key=lambda n: starts[n]):
+        kins = kin_models(lib, starts, fob, cfg)
+        if not kins:
+            print(f"{fob}: no earlier outbreak in the Atlas, skipped", flush=True)
+            continue
+        fob_df = parts[fob]
+        horizon = fob_df[fob_df.DT_DIGITA < starts[fob] + pd.Timedelta(weeks=cfg["weeks"])]
+        per, own = hindsight(fob_df, kins, cfg)
+        best = max(per, key=lambda k: per[k]["total"])
+        rows = replay(horizon, kins, cfg)
+        for r in rows:
+            r["fob"] = fob
+        week_rows += rows
+        out[fob] = {"day0": str(starts[fob].date()), "n_total": len(fob_df), "kin": {k: v[2] for k, v in kins.items()},
+                    "hindsight_per_patient": per, "own_cv_per_patient": own, "hindsight_best_kin": best,
+                    "novelty_gap": own["total"] - per[best]["total"]}
+        print(f"{fob}: {len(kins)} kin, hindsight best = {best}, novelty gap = {out[fob]['novelty_gap']:.3f} nats/patient",
+              flush=True)
+    Path("results", f"{cfg['name']}.json").write_text(json.dumps(out, indent=2))
+    pd.DataFrame(week_rows).to_csv(Path("results", f"{cfg['name']}_weeks.csv"), index=False)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

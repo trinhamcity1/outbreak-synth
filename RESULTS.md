@@ -4,6 +4,100 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-06 — Step 1: Kinship Vote + Stranger Flag, Time Machine Replay over the Outbreak Atlas
+
+**Code:** `src/outbreak_synth/kinship.py`, `run_kinship_replay.py`, `analyse_kinship.py`; config
+`experiments/exp05_kinship_replay.toml`. Outputs: `results/exp05_kinship_replay.json` (hindsight answers),
+`_weeks.csv` (weekly scores), `_votes.csv` (weekly votes), `_analysis.json` (summary).
+Runtime about 4 minutes on 4 CPUs.
+
+### How the vote works
+- **Candidates:** every outbreak that started before fob, using only the records entered before fob's day 0
+  (at least 200 patients and 20 deaths), plus the **Stranger**, which learns only from fob's own earlier records.
+- **Scoring:** every week, each candidate predicts fob's new patients before seeing them, on two parts:
+  - **profile:** how likely these patients are under the candidate's patient mix (age band, sex, core fields);
+  - **severity:** who dies, after shifting the candidate's overall death rate to fob's own (Handover Rule).
+- **Votes** = softmax(τ × cumulative score). τ = 0.03 was chosen by leave-one-outbreak-out (the same value
+  for every held-out outbreak).
+- **Fields:** only the 9 yes/no fields collected by **every** form (fever, cough, sore throat, shortness of breath;
+  heart, lung, kidney, immune, metabolic/diabetes) plus age band and sex, coded yes vs not-yes.
+  - Check behind this: on the 2019+ form, blank conditions mostly come with a blank "any risk factor"
+    (401,243 of 529,382 blank heart-disease rows in 2020), so blank means "no".
+  - Fields missing from the 2009 form are left out entirely, so the form cannot make outbreaks look unrelated.
+- **Groups for scoring:** flu (including H1N1), other respiratory virus, COVID. The vote never sees these labels;
+  they are only used to score it.
+
+### Hindsight answers (fit on each outbreak's full data)
+- Flu seasons are closest to earlier flu seasons, other-virus seasons to other-virus seasons, and COVID 2021 to COVID 2020.
+- **Novelty gap** = how much better fob's own model fits than its best kin (nats per patient):
+  - familiar seasons: 0.01–0.07;
+  - pandemic-era seasons: other virus 2020–21 0.26–0.28, flu 2021 0.48;
+  - outbreaks whose only possible kin was H1N1: flu 2013 0.99, other virus 2013 1.76;
+  - **COVID 2020: 1.10**.
+- COVID 2022 (Omicron) is closest in hindsight to **flu 2021**, not COVID 2021 (novelty gap 0.30).
+
+### Right group? (23 replayed outbreaks; 21 have an earlier member of their own group)
+| Week | Top group correct | Average vote for the true group | Exact best single kin |
+|---:|---:|---:|---:|
+| 1 | 81% | 0.66 | 52% |
+| 2 | 81% | 0.70 | 52% |
+| 4 | 90% | 0.80 | 57% |
+| 8 | 100% | 0.92 | 70% |
+| 13 | 100% | 0.98 | 78% |
+| 25 | 95% | 0.96 | 83% |
+
+- The patient-profile part does most of the work: profile alone gets the group right 90% of the time at week 4,
+  severity alone 67%.
+- The exact best single season is much harder (52–83%), because seasons within a group are near-ties.
+  Choosing within a group is left to the Fresh-Days Check, as planned.
+
+### Honest confidence? (group level, all weeks)
+| Vote for top group | Cases | Average said | Actually right |
+|---|---:|---:|---:|
+| 0.40–0.60 | 38 | 0.55 | 0.66 |
+| 0.60–0.80 | 71 | 0.70 | 0.93 |
+| 0.80–0.95 | 42 | 0.88 | 0.93 |
+| 0.95–1.00 | 394 | 0.998 | 0.992 |
+
+When OS is sure, it is right. When it hedges, it is right **more often** than it says (under-confident),
+which is the safe direction.
+
+### Stranger Flag
+| Outbreak | Novelty gap | Week the Stranger first wins | Patients by then |
+|---|---:|---:|---:|
+| other virus 2013 (only H1N1 to compare with) | 1.76 | 0 | 2 |
+| flu 2013 (only H1N1 to compare with) | 0.99 | 6 | 27 |
+| flu 2021 (flu during COVID) | 0.48 | 18 | 254 |
+| **COVID 2020** | **1.10** | **3** | **749** |
+| other virus 2021 | 0.28 | 8 | 1,738 |
+| flu 2015–2018, familiar seasons | 0.04–0.05 | 13–24, or never | 1,974–3,725, or never |
+| COVID 2022 | 0.30 | 2 | 17,562 |
+| COVID 2021 | 0.06 | 9 | 183,742 |
+| 10 other familiar seasons | 0.01–0.07 | never in 26 weeks | – |
+
+- Rank correlation between the novelty gap and "fewer patients before the Stranger wins": **0.67**.
+- **COVID 2020 timeline:**
+
+| Week | Patients | Stranger | Vote |
+|---:|---:|---:|---|
+| 0 | 2 | 4% | 57% flu |
+| 2 | 39 | 4% | 87% flu (closest: flu 2019) |
+| 3 | 749 | 52% | – |
+| 4 | 3,538 | 100% | – |
+
+### Plain reading
+- **What works:** the vote finds the right group in 90% of outbreaks by week 4 and in all of them by week 8.
+  Its high-confidence calls are right 99% of the time, and it flags COVID 2020 as new by week 3.
+- **Limits:**
+  - With fewer than about 40 patients, OS called COVID 2020 "flu-like". The Stranger needs a few hundred patients to win.
+  - In familiar seasons the Stranger also wins eventually, after about 2,000 patients, because fob's own data
+    becomes enough. So the flag is "the Stranger wins **early**". The cut-off is not tuned yet.
+- **Caveats:** 23 outbreaks but 3 groups, with COVID the only truly new disease after 2009, so these numbers
+  are encouraging, not proof. The groups used for scoring are lab-defined; the vote itself does not use them.
+- **Next:** the Two-Part Recipe and Handover Rule (step 2), using these votes to decide what to borrow.
+
+---
+
 ## 2026-10-05 — Outbreak library, H1N1 replay, and first test of learning from past outbreaks
 
 ### Owner decisions

@@ -24,6 +24,8 @@ PYTHONPATH=src python -m outbreak_synth.run_real_only experiments/exp01_real_onl
 PYTHONPATH=src python -m outbreak_synth.run_days_to_plateau experiments/exp02_days_to_plateau.toml
 PYTHONPATH=src python -m outbreak_synth.run_replay_real experiments/exp03_replay_real.toml
 PYTHONPATH=src python -m outbreak_synth.run_prior_probe experiments/exp04_prior_probe.toml
+PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp05_kinship_replay.toml
+PYTHONPATH=src python -m outbreak_synth.analyse_kinship exp05_kinship_replay
 ```
 
 ## Data sources
