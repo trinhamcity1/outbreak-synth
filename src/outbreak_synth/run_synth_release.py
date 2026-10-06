@@ -23,7 +23,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from .library import OUT as LIB, TARGET, YESNO
-from .os_core import build_state, risk
+from .os_core import CFG as OS_CFG, build_state, risk
 from .analyse_os2 import final_paths
 from .recipe import design, fit_map
 from .synth import compare, generate, generate_chain
@@ -55,7 +55,8 @@ def main(cfg_path):
     for fob, (_, gday, _) in sorted(paths.items()):
         if gday is None or (only and fob not in only):
             continue
-        s = build_state(fob, lib=lib)
+        s = build_state(fob, lib=lib, cfg={**OS_CFG, "os_run": cfg["os_run"],
+                                           "kinship_run": cfg.get("kinship_run", OS_CFG["kinship_run"])})
         lo, hi = info[fob]["info"]["test_days"]
         dd = (s.later.DT_DIGITA - s.t0).dt.days
         test = s.later[(dd >= lo) & (dd <= hi)]
@@ -118,7 +119,9 @@ def main(cfg_path):
               f"OS {a['os_model']:.3f} real {a['real_early']:.3f} OS-synth {a['os_synth_only']:.3f} CTGAN {a['ctgan_synth_only']:.3f} "
               f"real+OS {a['real_plus_os_synth']:.3f} real+CTGAN {a['real_plus_ctgan']:.3f} | {log}", flush=True)
         Path("results", f"{cfg['name']}.json").write_text(json.dumps({"config": cfg, "outbreaks": results}, indent=2, default=str))
-        Path("results", "synth_manifest.json").write_text(json.dumps(manifest, indent=2))
+        # Exp. 9 wrote results/synth_manifest.json; later runs use <name>_manifest.json so they never overwrite it.
+        mname = "synth_manifest.json" if cfg["name"] == "exp09_synth_release" else f"{cfg['name']}_manifest.json"
+        Path("results", mname).write_text(json.dumps(manifest, indent=2))
 
 
 if __name__ == "__main__":
