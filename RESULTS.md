@@ -4,6 +4,56 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-06 — Why OS got worse over time in 2013, and a fix (Exp. 6b)
+
+**Diagnosis:** `scripts/diag_2013_decline.py`.
+
+### Findings
+1. **Not a steady decline.** OS dropped as soon as the first 2–5 deaths arrived, then recovered as data grew.
+   flu 2013: 0.640 on day 0 → 0.554 on day 18 (16 patients, 3 deaths) → 0.707 on day 90 (116 patients, 21 deaths).
+2. **Cause (implementation flaw): columns with nothing to borrow were almost unpenalised.** These were state and
+   the fields H1N1's 2009 form never collected. They had penalty 1, against an effective 10 for borrowed columns,
+   so a handful of deaths swung them.
+   - By day 18 of flu 2013 (3 deaths: ages 87, 52, 15; states RS, SP, PR) OS had learned "low oxygen saturation
+     lowers death risk" (−0.84) and "São Paulo lowers death risk" (−0.87). Both are artefacts of 3 deaths.
+   - Dropping state alone helped a little. Giving these columns the same penalty as borrowed ones removed the dip.
+3. **Borrowing from a misleading relative.** Even before any fitting, H1N1's borrowed risk pattern (0.641) is below
+   ranking by age (0.664). H1N1's death risk peaked at ages 30–60 and was lower over 75 (age-band coefficients
+   0.99, 1.56, 1.62, 1.05, 0.74), the reverse of seasonal flu. It was the only relative available in 2013.
+4. **Seasonal day 0.** Day 0 = 1 January for yearly seasons. The 2013 flu season peaked mid-year: only 116 patients
+   arrived by day 90, against 3,555 in the test window, and the early patients were younger (median 29 vs 36).
+   This does not affect COVID or H1N1, which have real start dates.
+
+### Exp. 6b: fix for finding 2 (`experiments/exp06b_recipe_replay.toml`, `lam_free = "lam0"`)
+Columns with nothing to borrow now shrink towards "no effect" with the same strength as borrowed columns.
+Everything else is identical to Exp. 6, whose results are kept unchanged.
+
+| | Exp. 6 | Exp. 6b |
+|---|---:|---:|
+| Mean gap to gold, days 0–90 (all outbreaks) | 0.026 | **0.018** |
+| Borrowing strength chosen (leave-one-out) | 10 for 22 of 23 | 10 for all 23 |
+| Plateau earlier / same / later than real data alone | 21 / 2 / 0 | 20 / 3 / 0 |
+| Beats age only on day 14 | 18 of 23 | 19 of 23 |
+| COVID 2020 plateau (real data alone: 34) | day 30 | **day 28** |
+| COVID 2020, day 14 / day 28 | 0.681 / 0.744 | 0.688 / 0.753 |
+| flu 2013, day 14 / day 28 | 0.565 / 0.575 | **0.631 / 0.631** |
+| other virus 2013, day 28 | 0.670 | 0.699 |
+
+- **Worse with the fix:**
+  - other virus 2021: plateau day 28 → 60; its worst same-day gap against real data alone is now −0.035.
+  - flu 2021: plateau day 58 → never.
+  - other virus 2014: day 58 → 86.
+  - flu 2014: day 6 → 14.
+- **Still open:** COVID 2020 days 0–20 (≈0.685) and both 2013 outbreaks stay **below age only**. That is finding 3,
+  which the fix does not address.
+
+### Decisions needed
+- How to handle a misleading relative (finding 3). Proposed: a safe fallback that borrows only patterns shared by
+  most past outbreaks until the vote is confident, plus the Fresh-Days Check, with age only as a permanent baseline.
+- Seasonal day 0 (finding 4). Proposed: start each season when weekly cases cross a threshold.
+
+---
+
 ## 2026-10-06 — Step 2: Severity Model + Handover Rule vs real data only
 
 **Code:** `src/outbreak_synth/recipe.py`, `run_recipe_replay.py`, `analyse_recipe.py`; config
