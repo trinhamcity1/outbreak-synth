@@ -81,7 +81,11 @@ def run_one(fob, lib_path, cfg, kin_list, tau, weeks_path):
         mu, have = kin_prior(kin_coefs, kin_fields, past, meta)
         row["stranger"] = stranger
         for lam0 in cfg["lam0"]:
-            lam = np.where(have, lam0 * (1 - stranger), 1.0)
+            # Columns with nothing to borrow (state, fields the kin's form lacked) shrink towards 0.
+            # "lam_free": "lam0" gives them the same strength as borrowed columns (Exp. 6b fix);
+            # a number keeps it fixed (Exp. 6 used 1.0, which let 2-3 early deaths swing them).
+            free = lam0 if cfg.get("lam_free", 1.0) == "lam0" else float(cfg.get("lam_free", 1.0))
+            lam = np.where(have, lam0 * (1 - stranger), free)
             if len(ytr) == 0:
                 score = Xt @ mu
             else:
