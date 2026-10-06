@@ -11,7 +11,7 @@ from .kinship import votes_from_scores
 
 TAUS = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
 CHECK_WEEKS = [1, 2, 4, 8, 13, 25]
-family = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+from .library import family
 
 
 def vote_table(weeks, meta, tau, part="total"):

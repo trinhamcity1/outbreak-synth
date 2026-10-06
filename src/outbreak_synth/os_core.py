@@ -27,7 +27,7 @@ CFG = {"lam0": 10.0, "day0_mode": "threshold", "season_threshold": 20, "max_fit_
        # age bands and near-collinear columns get unbounded coefficients (e.g. -18.9, SE 4,597 for ages 1-4 in
        # COVID 2020), which ranking tolerates but a generator does not. 1.0 = the real-only ridge strength.
        "lam_floor": 1.0}
-fam = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+from .library import family as fam
 
 
 @dataclass

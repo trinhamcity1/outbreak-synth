@@ -142,7 +142,7 @@ def main(cfg_path):
     src = cfg["kinship_run"]
     meta5 = json.loads(Path("results", f"{src}.json").read_text())
     ana = json.loads(Path("results", f"{src}_analysis.json").read_text())
-    jobs = [(f, list(m["kin"]), float(ana["tau_chosen"][f])) for f, m in meta5.items()]
+    jobs = [(f, list(m["kin"]), float(ana["tau_chosen"][f])) for f, m in meta5.items() if not cfg.get("only") or f in cfg["only"]]
     res = Parallel(n_jobs=cfg["n_jobs"])(delayed(run_one)(f, cfg, kin, tau, f"results/{src}_weeks.csv") for f, kin, tau in jobs)
     out = {f: r for f, r in res if r is not None}
     Path("results", f"{cfg['name']}.json").write_text(json.dumps(

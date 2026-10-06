@@ -158,7 +158,7 @@ def offline_variants(name):
        member in the Atlas, use age_trend until E fresh deaths, then kin. The label is external information a lab
        has on day 0 (e.g. "a new coronavirus"); it is not learned from fob's records."""
     outs = json.loads(Path("results", f"{name}.json").read_text())["outbreaks"]
-    fam = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+    from .library import family as fam
     gold = {f: r["info"]["gold_auc"] for f, r in outs.items()}
     age = {f: r["info"]["age_only_auc"] for f, r in outs.items()}
     pd.set_option("display.width", 250)
@@ -202,7 +202,7 @@ def final_paths(name, E=20, m=20, s=0.98):
     """OS's final rule on the logged Exp. 8 replay: kin, or age_trend until E fresh deaths when fob's pathogen
     group has no earlier member. Returns {outbreak: (per-day frame with chosen/auc_os/stability, green day)}."""
     outs = json.loads(Path("results", f"{name}.json").read_text())["outbreaks"]
-    fam = lambda n: n.rsplit("_", 1)[0].replace("h1n1", "flu")
+    from .library import family as fam
     res = {}
     for f, r in outs.items():
         d = frame(r)

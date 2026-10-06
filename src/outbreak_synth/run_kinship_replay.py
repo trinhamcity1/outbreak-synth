@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold
 
-from .kinship import (Profile, bernoulli_logpmf, encode, fit_offset, fit_risk, risk_logit, votes_from_scores)
+from .kinship import (KIN_FIELDS, Profile, bernoulli_logpmf, encode, fit_offset, fit_risk, risk_logit, votes_from_scores)
 from .library import OUT as LIB, TARGET
 
 
@@ -36,7 +36,14 @@ def day0_of(df, name, mode="jan1", threshold=20):
     return t0
 
 
-def kin_models(lib, starts, fob, cfg):
+def fob_fields(fob_df):
+    """KIN_FIELDS that fob's form collects (known on day 0 from the form; here: < 90% missing). Comparing a field
+    fob never records would make every relative look unlike fob for reasons of form, not disease. Every Brazilian
+    form collects all KIN_FIELDS, so Brazil replays are unchanged."""
+    return [f for f in KIN_FIELDS if (fob_df[f] == "missing").mean() < 0.9]
+
+
+def kin_models(lib, starts, fob, cfg, fields=None):
     t0 = starts[fob]
     kins = {}
     for k, kd in lib.groupby("outbreak"):
@@ -47,15 +54,15 @@ def kin_models(lib, starts, fob, cfg):
             continue
         if len(kd) > cfg["max_fit_rows"]:
             kd = kd.sample(cfg["max_fit_rows"], random_state=0)
-        age, sex, yes, X = encode(kd)
+        age, sex, yes, X = encode(kd, fields)
         kins[k] = (Profile().fit(age, sex, yes), fit_risk(X, kd[TARGET].to_numpy(), C=1.0), len(kd))
     return kins
 
 
-def hindsight(fob_df, kins, cfg):
+def hindsight(fob_df, kins, cfg, fields=None):
     """Per-patient fit of each kin on fob's full data, and fob's own cross-validated fit (novelty gap)."""
     d = fob_df.sample(min(len(fob_df), cfg["max_fit_rows"]), random_state=0)
-    age, sex, yes, X = encode(d)
+    age, sex, yes, X = encode(d, fields)
     y = d[TARGET].to_numpy()
     per = {}
     for k, (prof, risk, _) in kins.items():
@@ -73,10 +80,10 @@ def hindsight(fob_df, kins, cfg):
     return per, own
 
 
-def replay(fob_df, kins, cfg):
+def replay(fob_df, kins, cfg, fields=None):
     t0 = fob_df.DT_DIGITA.min()
     week = ((fob_df.DT_DIGITA - t0).dt.days // 7).to_numpy()
-    age, sex, yes, X = encode(fob_df)
+    age, sex, yes, X = encode(fob_df, fields)
     y = fob_df[TARGET].to_numpy()
     base = {k: risk_logit(r, X) for k, (_, r, _) in kins.items()}
     prof_ll = {k: p.logpdf(age, sex, yes) for k, (p, _, _) in kins.items()}
@@ -121,19 +128,22 @@ def main(cfg_path):
         starts[name] = t0
     out, week_rows = {}, []
     for fob in sorted(parts, key=lambda n: starts[n]):
-        kins = kin_models(lib, starts, fob, cfg)
+        if cfg.get("only") and fob not in cfg["only"]:
+            continue
+        fields = fob_fields(parts[fob])
+        kins = kin_models(lib, starts, fob, cfg, fields)
         if not kins:
             print(f"{fob}: no earlier outbreak in the Atlas, skipped", flush=True)
             continue
         fob_df = parts[fob]
         horizon = fob_df[fob_df.DT_DIGITA < starts[fob] + pd.Timedelta(weeks=cfg["weeks"])]
-        per, own = hindsight(fob_df, kins, cfg)
+        per, own = hindsight(fob_df, kins, cfg, fields)
         best = max(per, key=lambda k: per[k]["total"])
-        rows = replay(horizon, kins, cfg)
+        rows = replay(horizon, kins, cfg, fields)
         for r in rows:
             r["fob"] = fob
         week_rows += rows
-        out[fob] = {"day0": str(starts[fob].date()), "n_total": len(fob_df), "kin": {k: v[2] for k, v in kins.items()},
+        out[fob] = {"day0": str(starts[fob].date()), "n_total": len(fob_df), "fields": fields, "kin": {k: v[2] for k, v in kins.items()},
                     "hindsight_per_patient": per, "own_cv_per_patient": own, "hindsight_best_kin": best,
                     "novelty_gap": own["total"] - per[best]["total"]}
         print(f"{fob}: {len(kins)} kin, hindsight best = {best}, novelty gap = {out[fob]['novelty_gap']:.3f} nats/patient",

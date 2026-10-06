@@ -24,11 +24,13 @@ AGE_BINS = [-1, 1, 5, 15, 30, 45, 60, 75, 200]
 N_AGE = len(AGE_BINS) - 1
 
 
-def encode(df):
-    """Return (age_band int array, sex int array, binary field matrix, design matrix for risk models)."""
+def encode(df, fields=None):
+    """Return (age_band int array, sex int array, binary field matrix, design matrix for risk models).
+    fields: the yes/no fields to use (default KIN_FIELDS); pass only those fob's form collects."""
+    fields = KIN_FIELDS if fields is None else fields
     age = pd.cut(df.age.fillna(df.age.median() if df.age.notna().any() else 40), AGE_BINS, labels=False).to_numpy().astype(int)
     sex = df.CS_SEXO.map({"M": 0, "F": 1}).fillna(2).to_numpy().astype(int)
-    yes = (df[KIN_FIELDS].to_numpy() == "yes").astype(float)
+    yes = (df[fields].to_numpy() == "yes").astype(float).reshape(len(df), len(fields))
     X = np.hstack([np.eye(N_AGE)[age][:, 1:], np.eye(3)[sex][:, :2], yes])
     return age, sex, yes, X
 

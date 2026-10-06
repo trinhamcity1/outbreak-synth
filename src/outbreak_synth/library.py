@@ -6,6 +6,7 @@ same fields; a field the form did not collect is "missing".
 Usage: PYTHONPATH=src python -m outbreak_synth.library  -> data/processed/library.parquet
 """
 import glob
+import os
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,18 @@ import pandas as pd
 
 OLD = Path("data/raw/srag_historic")
 NEW = Path("data/raw/srag")
-OUT = Path("data/processed/library.parquet")
+# Brazil-only Atlas (Exp. 1-10). Set OUTBREAK_LIB=data/processed/library_intl.parquet to use the Atlas that
+# also holds Mexico (Exp. 11+); building it never touches the Brazil-only file, so earlier results reproduce.
+BRAZIL = Path("data/processed/library.parquet")
+INTL = Path("data/processed/library_intl.parquet")
+OUT = Path(os.environ.get("OUTBREAK_LIB", BRAZIL))
+MEXICO = Path("data/raw/mexico/extracted")
+
+
+def family(name):
+    """Pathogen group of an outbreak: flu (incl. H1N1), othervirus, covid (Brazil or Mexico)."""
+    f = name.split("_")[0]
+    return "flu" if f == "h1n1" else f
 
 SYMPTOMS = ["FEBRE", "TOSSE", "GARGANTA", "DISPNEIA", "DESC_RESP", "SATURACAO"]
 # METABOLIC = old-form METABOLICA ("chronic metabolic disease / diabetes") = new-form DIABETES.
@@ -114,6 +126,38 @@ def build():
     return lib
 
 
+def load_mexico(year):
+    """Mexico SISVER COVID-19 year-closure file -> harmonised schema, outbreak covid_mx_<year>.
+    Hospitalised (TIPO_PACIENTE 2), confirmed COVID-19 (CLASIFICACION_FINAL 1-3). Death = FECHA_DEF recorded.
+    The file has no data-entry date, so DT_DIGITA is the ADMISSION date (FECHA_INGRESO): ordering ignores
+    reporting delay, which is more optimistic than the Brazil replays. Symptoms are not collected (missing).
+    Mapping: DIABETES->METABOLIC, CARDIOVASCULAR->CARDIOPATI, EPOC->PNEUMOPATI, RENAL_CRONICA->RENAL,
+    INMUSUPR->IMUNODEPRE, OBESIDAD->OBESIDADE (1 yes, 2 no, 97-99 missing). State = 'MX-<ENTIDAD_UM>' (not borrowed)."""
+    cols = ["ID_REGISTRO", "TIPO_PACIENTE", "FECHA_INGRESO", "FECHA_SINTOMAS", "FECHA_DEF", "EDAD", "SEXO",
+            "CLASIFICACION_FINAL", "ENTIDAD_UM", "DIABETES", "CARDIOVASCULAR", "EPOC", "RENAL_CRONICA", "INMUSUPR", "OBESIDAD"]
+    d = pd.read_csv(MEXICO / f"COVID19MEXICO{year}.csv", usecols=cols, dtype=str)
+    d = d[(d.TIPO_PACIENTE == "2") & d.CLASIFICACION_FINAL.isin(["1", "2", "3"])].copy()
+    out = pd.DataFrame({"id": "MX-" + d.ID_REGISTRO,
+                        "DT_DIGITA": pd.to_datetime(d.FECHA_INGRESO, errors="coerce"),
+                        "DT_SIN_PRI": pd.to_datetime(d.FECHA_SINTOMAS, errors="coerce"),
+                        "age": _num(d.EDAD), "CS_SEXO": d.SEXO.map({"1": "F", "2": "M"}),
+                        "CS_RACA": pd.NA, "SG_UF_NOT": "MX-" + d.ENTIDAD_UM.str.zfill(2)}, index=d.index)
+    for src, dst in [("DIABETES", "METABOLIC"), ("CARDIOVASCULAR", "CARDIOPATI"), ("EPOC", "PNEUMOPATI"),
+                     ("RENAL_CRONICA", "RENAL"), ("INMUSUPR", "IMUNODEPRE"), ("OBESIDAD", "OBESIDADE")]:
+        out[dst] = d[src]
+    out[TARGET] = (d.FECHA_DEF != "9999-99-99").astype(int)
+    out = out[out.DT_DIGITA.notna()]
+    return _finish(out, f"covid_mx_{year}")
+
+
+def build_intl():
+    """Brazil Atlas + Mexico COVID-19 2020 and 2021 -> data/processed/library_intl.parquet."""
+    lib = pd.concat([pd.read_parquet(BRAZIL), load_mexico(2020), load_mexico(2021)], ignore_index=True)
+    lib = lib.sort_values(["outbreak", "DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable").reset_index(drop=True)
+    lib.to_parquet(INTL, index=False)
+    return lib
+
+
 def summary(lib):
     g = lib.groupby("outbreak")
     s = pd.DataFrame({
@@ -125,7 +169,8 @@ def summary(lib):
 
 
 if __name__ == "__main__":
-    lib = build()
+    import sys
+    lib = build_intl() if "--intl" in sys.argv else build()
     s = summary(lib)
     print(s.to_string())
-    s.to_csv("results/library_summary.csv")
+    s.to_csv("results/library_intl_summary.csv" if "--intl" in sys.argv else "results/library_summary.csv")
