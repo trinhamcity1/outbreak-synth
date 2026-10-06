@@ -4,6 +4,29 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-06 — Death rate by age across the Outbreak Atlas (`age_profile.py` → `results/age_profile.csv`)
+
+Crude in-hospital death rate (hospitalised patients, known outcome), not adjusted for conditions.
+
+| Group | <1 | 1–4 | 5–14 | 15–29 | 30–44 | 45–59 | 60–74 | 75+ |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| COVID 2020 | 8.9% | 4.3% | 6.9% | 10.0% | 12.8% | 22.7% | 40.6% | 57.8% |
+| COVID 2021–22 | 4.9 | 3.2 | 5.8 | 11.7 | 16.9 | 27.1 | 41.2 | 50.3 |
+| flu 2013–2020 | 5.9 | 5.0 | 5.8 | 9.5 | 17.0 | 29.4 | 26.7 | 27.3 |
+| flu 2021–22 | 1.7 | 1.7 | 2.0 | 4.6 | 9.4 | 17.0 | 20.5 | 25.7 |
+| other virus 2013–22 (58,211 patients under 1) | 1.8 | 1.8 | 2.8 | 8.2 | 14.1 | 18.5 | 22.3 | 26.5 |
+| **H1N1 2009** | 4.5 | 4.0 | 3.8 | 8.3 | 15.0 | **17.4** | 12.5 | **10.1** |
+
+- "Older patients die more often" is established knowledge, not a finding of this project, and our data confirms it
+  for 5 of 6 groups. The shape differs: COVID keeps rising to 58% at 75+, while seasonal flu flattens after 45.
+- **H1N1 2009 breaks it:** death peaks at 45–59 and falls for 60+. This is why borrowing H1N1's pattern hurt the
+  2013 seasons (Exp. 6/6b).
+- Babies under 1 do worse than 1–4-year-olds in several groups.
+- Consequence for Step 3: the safe fallback must not assume "risk rises with age". It borrows only patterns that
+  most past outbreaks agree on, computed from the Atlas.
+
+---
+
 ## 2026-10-06 — Why OS got worse over time in 2013, and a fix (Exp. 6b)
 
 **Diagnosis:** `scripts/diag_2013_decline.py`.
