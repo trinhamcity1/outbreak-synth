@@ -26,6 +26,8 @@ PYTHONPATH=src python -m outbreak_synth.run_replay_real experiments/exp03_replay
 PYTHONPATH=src python -m outbreak_synth.run_prior_probe experiments/exp04_prior_probe.toml
 PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp05_kinship_replay.toml
 PYTHONPATH=src python -m outbreak_synth.analyse_kinship exp05_kinship_replay
+PYTHONPATH=src python -m outbreak_synth.run_recipe_replay experiments/exp06_recipe_replay.toml   # ~20 min
+PYTHONPATH=src python -m outbreak_synth.analyse_recipe exp06_recipe_replay
 ```
 
 ## Data sources

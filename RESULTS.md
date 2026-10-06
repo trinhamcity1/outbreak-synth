@@ -4,6 +4,72 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-06 — Step 2: Severity Model + Handover Rule vs real data only
+
+**Code:** `src/outbreak_synth/recipe.py`, `run_recipe_replay.py`, `analyse_recipe.py`; config
+`experiments/exp06_recipe_replay.toml`. Outputs: `results/exp06_recipe_replay.json`, `_summary.csv`, `_analysis.json`.
+Runtime 21 minutes on 4 CPUs.
+
+### Method
+- **Severity Model:** logistic regression for in-hospital death, fitted with a prior.
+  - Each risk factor's prior mean = the Kinship-Vote-weighted average of the kin's coefficients. Votes come from
+    Step 1, using only weeks completed before the day in question.
+  - Never borrowed: the intercept (fob's overall death rate), state (geography), and fields a kin's form did not collect.
+  - Fields: all 26 shared fields (age band, sex, race, state, 6 symptoms, 10 conditions; yes vs not-yes).
+- **Handover Rule:** borrowing strength = λ0 × (1 − Stranger share). The prior is fixed while the data term grows,
+  so fob's own data takes over as patients arrive.
+  - λ0 ∈ {1, 10, 100, 1000}, chosen per outbreak by leave-one-outbreak-out (minimum mean gap to gold over days
+    0–90 on the other outbreaks). λ0 = 10 was chosen for 22 of 23 outbreaks.
+- **Real only:** the same model with no borrowing (ridge). It needs at least 10 deaths and 10 survivors, as in Exp. 2/3.
+- **Replay:** every outbreak with earlier kin (23), days 0–90 in steps of 2 days.
+  - Test set = records entered on days 91–182; for COVID 2020, July 2020, the same as Exp. 2/3.
+  - Gold = the same model class trained on every record of the outbreak outside the test window.
+- **Age only:** a zero-learning baseline that ranks test patients by age.
+
+### Results (test AUC; plateau = first day within 0.02 of gold)
+| Outbreak | Gold | Age only | OS day 0 | OS day 14 | OS day 28 | Real day 28 | Plateau, real | Plateau, OS |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **COVID 2020** | 0.767 | **0.727** | 0.685 | 0.681 | 0.744 | 0.743 | 34 | **30** |
+| COVID 2021 | 0.716 | 0.683 | 0.646 | 0.706 | 0.709 | 0.709 | 10 | 8 |
+| COVID 2022 | 0.751 | 0.657 | 0.729 | 0.739 | 0.744 | 0.744 | 8 | 4 |
+| flu 2013 (only H1N1 as kin) | 0.802 | 0.664 | 0.640 | 0.565 | 0.575 | – | never | never |
+| flu 2014–2020 (7 seasons) | 0.77–0.81 | 0.65–0.75 | 0.78–0.81 | 0.78–0.81 | 0.75–0.81 | mostly none | 84–88 or never | **0–6** |
+| flu 2021 (during COVID) | 0.715 | 0.713 | 0.674 | 0.686 | 0.673 | – | never | 58 |
+| flu 2022 | 0.775 | 0.710 | 0.771 | 0.764 | 0.774 | 0.778 | 10 | 0 |
+| other virus 2013 (only H1N1 as kin) | 0.785 | 0.749 | 0.689 | 0.690 | 0.670 | – | never | never |
+| other virus 2014–2022 (9 seasons) | 0.82–0.86 | 0.69–0.83 | 0.76–0.85 | 0.78–0.85 | 0.78–0.84 | mostly none | 68–76 or never | 0–58 (6 of 9 on day 0) |
+
+- **Plateau:** OS reaches it earlier in 21 of 23 outbreaks, at the same time in 2 (neither arm got there), and later in none.
+  Median plateau day: real only 51 among those that reached it (most never did within 90 days); OS 0.
+- **Compared with real only on the same day,** OS is at most 0.02 worse (other virus 2021) and is up to 0.15 better.
+- **Compared with age only on day 0,** OS is better in 18 of 23 outbreaks.
+- In 3 seasons OS beats the gold standard, because the gold model is trained on that season's own small dataset.
+- The real-only arm needs at least 10 deaths. Many seasons have fewer than that early on, so "never" often means
+  "never had enough data", not "trained but poor".
+
+### Plain reading
+**Familiar outbreaks: a strong win.** For seasonal flu and other-virus seasons, OS is already at the plateau on
+day 0 by borrowing from past seasons. Real data alone usually could not even train a model within 90 days.
+
+**Novel outbreaks: the method fails where it matters most.**
+- **COVID 2020** technically meets the step's target: plateau on day 30 against 34 for real data alone.
+  But that is only 4 days, and on days 0–20 OS (0.655–0.685) is **worse than ranking by age** (0.727).
+  - Cause: in weeks 0–2 the Kinship Vote trusted flu (the Stranger had only 4%), and flu's risk pattern beyond
+    age misleads for COVID. Borrowing only helps once COVID's own data takes over (from about day 26).
+- **The same failure** appears in every outbreak with a high novelty gap in Step 1: flu 2013 and other virus 2013
+  (H1N1 was the only kin), and flu 2021 (flu during COVID). OS is worse than age only in all of them.
+  - flu 2013 and other virus 2013 get **worse over time** (0.64 → 0.58), which needs investigating.
+- **COVID 2021** starts below age only on day 0 (0.646 vs 0.683) and recovers by day 14.
+
+**What this means for the design:** borrowing is only as good as the Kinship Vote's early call, and the Stranger
+Flag is too slow to protect novel outbreaks. Candidate fixes for Step 3, not yet tested:
+1. A **safe fallback**: until the vote is confident, borrow only what is shared by almost every respiratory
+   outbreak (age), not every risk factor.
+2. Let the **Fresh-Days Check** catch a misleading prior on fob's own newest days and weaken borrowing then.
+3. Add **age only** as a permanent baseline alongside real only.
+
+---
+
 ## 2026-10-06 — Step 1: Kinship Vote + Stranger Flag, Time Machine Replay over the Outbreak Atlas
 
 **Code:** `src/outbreak_synth/kinship.py`, `run_kinship_replay.py`, `analyse_kinship.py`; config

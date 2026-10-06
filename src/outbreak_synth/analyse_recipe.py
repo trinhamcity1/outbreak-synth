@@ -14,16 +14,16 @@ CHECK = [0, 6, 14, 20, 28, 40, 60, 90]
 
 def frame(r):
     d = pd.DataFrame(r["days"])
+    if "real_only" not in d:  # real data never had enough deaths and survivors in 90 days
+        d["real_only"] = np.nan
     return d
 
 
 def gap_curve(d, col, gold):
-    return gold - d[col].fillna(0.5) if col in d else pd.Series(gold - 0.5, index=d.index)
+    return gold - d[col].fillna(0.5)
 
 
 def plateau_day(d, col, gold, tol=0.02):
-    if col not in d:
-        return None
     hit = d[(gold - d[col]) <= tol]
     return int(hit.day.iloc[0]) if len(hit) else None
 
@@ -74,3 +74,21 @@ def main(name):
 
 if __name__ == "__main__":
     main(sys.argv[1])
+
+
+def age_only(name):
+    """Zero-learning baseline: rank test patients by age (older = higher risk). Needs no fob data at all."""
+    from sklearn.metrics import roc_auc_score
+    from .library import OUT as LIB
+    from .run_kinship_replay import day0_of
+    res = json.loads(Path("results", f"{name}.json").read_text())
+    lib = pd.read_parquet(LIB)
+    out = {}
+    for f, r in res["outbreaks"].items():
+        d = lib[lib.outbreak == f]
+        t0 = day0_of(d, f)
+        lo, hi = r["info"]["test_days"]
+        day = (d.DT_DIGITA - t0).dt.days
+        t = d[(day >= lo) & (day <= hi)]
+        out[f] = round(float(roc_auc_score(t.death, t.age.fillna(t.age.median()))), 3)
+    return out
