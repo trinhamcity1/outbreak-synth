@@ -40,6 +40,13 @@ python3 -m venv .venv-ctgan && .venv-ctgan/bin/pip install --index-url https://d
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp09_synth_release.toml   # ~45 min
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10_synth_chain.toml   # dependency-chain generator
 PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 44   # Glass Box reports -> reports/
+# Out-of-country test (Mexico COVID-19 2020/2021)
+./scripts/download_mexico.sh && (cd data/raw/mexico && mkdir -p extracted && cd extracted && unzip -o ../COVID19MEXICO2020.zip && unzip -o ../COVID19MEXICO2021.zip && unzip -o ../diccionario_datos_abiertos.zip)
+PYTHONPATH=src python -m outbreak_synth.library --intl                     # -> data/processed/library_intl.parquet
+export OUTBREAK_LIB=data/processed/library_intl.parquet
+PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp11_kinship_mexico.toml
+PYTHONPATH=src python -m outbreak_synth.run_os_replay2 experiments/exp11_os_mexico.toml
+PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp12_synth_mexico.toml
 ```
 
 ## Data sources
@@ -47,6 +54,8 @@ PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 44   # Glass Box
   Dataset `srag-2019-a-2026` on https://dadosabertos.saude.gov.br, license CC-BY.
   Release `23-03-2026` for the 2019-2022 files. Data dictionary: `dicionario-de-dados-2019-a-2025.pdf`.
   Datasets `srag-2009-2012` and `srag-2013-2018` (CC-BY) for the historic outbreaks.
+- Mexico COVID-19 open data (SISVER), Secretaría de Salud / Dirección General de Epidemiología, year-closure files
+  2020 and 2021, under the DGE Términos de Libre Uso de Datos Abiertos.
 
 ## What we are building (OS)
 Outbreak Synth is a general method: it studies the past, follows something new day by day, says when

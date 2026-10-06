@@ -4,6 +4,42 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Out-of-country test: Synth Release on Mexico (Exp. 12)
+
+**Run:** `OUTBREAK_LIB=data/processed/library_intl.parquet`, config `experiments/exp12_synth_mexico.toml`.
+Dependency-chain generator, 50,000 rows; CTGAN as in Exp. 9. Outputs: `results/exp12_synth_mexico.json`,
+`results/exp12_synth_mexico_manifest.json`.
+
+| | Mexico 2020 (green day 48, 4,862 real records) | Mexico 2021 (green day 18, 33,830 real records) |
+|---|---:|---:|
+| Gold / age only | 0.698 / 0.693 | 0.680 / 0.674 |
+| OS's own model | 0.691 | 0.679 |
+| Real records OS had, alone | 0.691 | 0.679 |
+| **OS synthetic only** | **0.689** | **0.679** |
+| Real + OS synthetic | 0.689 | 0.679 |
+| CTGAN synthetic only | 0.572 | 0.666 |
+| Real + CTGAN | 0.603 | 0.679 |
+
+| Fidelity (lower = closer) | OS vs real OS had | CTGAN vs real OS had | OS vs later real | Drift: early vs later real |
+|---|---:|---:|---:|---:|
+| **Mexico 2020:** death rate gap / worst age-band gap | 0.003 / 0.018 | 0.086 / 0.344 | 0.016 / 0.063 | 0.013 / 0.065 |
+| **Mexico 2020:** worst correlation gap | 0.036 | 0.369 | 0.095 | 0.087 |
+| **Mexico 2021:** death rate gap / worst age-band gap | 0.001 / 0.005 | 0.024 / 0.168 | 0.182 / 0.138 | 0.183 / 0.142 |
+| **Mexico 2021:** worst correlation gap | 0.024 | 0.163 | 0.082 | 0.074 |
+
+**Plain reading**
+- **OS's synthetic patients match the real ones closely in another country and form.** Death rates are within
+  0.3 points and links within 0.04. CTGAN is 3–10 times further off.
+- **Against later patients,** OS synthetic is as far as the real early data itself. Mexico 2021's early patients
+  (January 2021 wave) died far more often than later ones: 18 points of drift. OS reproduces the data it had and
+  cannot anticipate that change.
+- **Usefulness:** both Mexico outbreaks had plenty of real records by the green day (4,862 and 33,830), so synthetic
+  data adds nothing over the real records (0.689 vs 0.691; 0.679 vs 0.679). This matches Brazil, where the gain from
+  OS synthetic came in outbreaks with under 1,000 real records.
+- **CTGAN** is clearly worse with about 5,000 records (0.572) and close to real with 20,000 (0.666).
+
+---
+
 ## 2026-10-07 — Out-of-country test: Mexico COVID-19 2020 and 2021 (Exp. 11)
 
 ### Data
