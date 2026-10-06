@@ -110,3 +110,49 @@ def main(name):
 
 if __name__ == "__main__":
     main(sys.argv[1])
+
+
+def min_evidence(name, E_grid=(0, 10, 30, 100), defaults=("kin", "consensus")):
+    """Re-score the logged replay with a stricter Fresh-Days rule: keep the default candidate until at least E deaths
+    have been scored on fresh weeks, then use the best cumulative fresh score. Uses only logged, prequential numbers:
+    scored deaths on day d = deaths among records entered before the last complete week (from the logged grid)."""
+    outs = json.loads(Path("results", f"{name}.json").read_text())["outbreaks"]
+    res = {}
+    for E, D in itertools.product(E_grid, defaults):
+        per = {}
+        for f, r in outs.items():
+            d = frame(r)
+            os_auc = []
+            for _, row in d.iterrows():
+                u = int(row.day) // 7
+                prev = d[d.day < 7 * u]
+                scored_deaths = int(prev.deaths.iloc[-1]) if len(prev) else 0
+                if scored_deaths >= E and u > 0:
+                    c = max(("kin", "consensus", "own"), key=lambda k: row[f"fresh_{k}"])
+                else:
+                    c = D
+                os_auc.append(row[f"auc_{c}"])
+            per[f] = d.assign(auc_rule=os_auc)
+        res[(E, D)] = per
+    return outs, res
+
+
+def report_min_evidence(name):
+    outs, res = min_evidence(name)
+    gap = {k: {f: float((outs[f]["info"]["gold_auc"] - v.auc_rule).mean()) for f, v in per.items()} for k, per in res.items()}
+    g = pd.DataFrame(gap)
+    chosen = {f: g.drop(index=f).mean().idxmax() if False else g.drop(index=f).mean().idxmin() for f in g.index}
+    rows = []
+    for f in sorted(outs):
+        k = chosen[f]
+        d, i = res[k][f], outs[f]["info"]
+        rows.append({"outbreak": f, "rule": f"E={k[0]},default={k[1]}", "gold": round(i["gold_auc"], 3), "age_only": round(i["age_only_auc"], 3),
+                     **{f"d{x}": round(float(d.loc[d.day == x, "auc_rule"].iloc[0]), 3) for x in CHECK},
+                     "plateau": first_day(d, "auc_rule", i["gold_auc"]),
+                     "days_below_age": int((d.auc_rule < i["age_only_auc"]).sum() * 2)})
+    t = pd.DataFrame(rows)
+    print("mean gap to gold by rule (all outbreaks):"); print(g.mean().round(4).to_string())
+    print(t.to_string(index=False))
+    for x in CHECK:
+        print(f"day {x}: rule beats age-only in {(t[f'd{x}'] > t.age_only).sum()}/{len(t)}")
+    t.to_csv(Path("results", f"{name}_min_evidence.csv"), index=False)

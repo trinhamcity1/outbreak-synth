@@ -4,6 +4,87 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Step 3: Fresh-Days Check, consensus fallback, Green Light (Exp. 5b, Exp. 7)
+
+**Code:**
+- `run_kinship_replay.py` (`day0_mode = "threshold"`), `run_os_replay.py`, `analyse_os.py` (incl. `min_evidence`).
+- Configs: `experiments/exp05b_kinship_replay.toml`, `exp07_os_replay.toml`.
+- Outputs: `results/exp05b_*`, `results/exp07_os_replay*.{json,csv}`. Runtime about 25 minutes.
+
+### Changes agreed with the owner
+- **Seasonal day 0:** for flu and other-virus seasons, the first week with at least 20 new records (knowable in
+  real time). COVID and H1N1 keep their first record. For example, flu 2013 now starts on 2013-04-02, with 3,210
+  patients in its first 90 days instead of 116.
+- **Step 1 rerun (Exp. 5b)** with these start dates: right group 86% at week 1, 95% from week 4. Calibration is
+  unchanged (votes of 0.95 or more are right 99% of the time).
+- **Three candidate recipes,** all with borrowing strength 10 (from Exp. 6b):
+  - kin: the vote-weighted relatives;
+  - consensus: borrow a coefficient only if at least 3 past outbreaks collected the field and at least 80% agree
+    on its direction;
+  - own: borrow nothing.
+- **Fresh-Days Check:** each week, every candidate is fitted on earlier records and scored (log score) on that
+  week's records, which it has not seen. OS uses the best cumulative score; consensus is the default before any week is scored.
+- **Green Light:** at least m deaths so far, and the rank correlation of OS's risk scores for fob's patients today
+  vs 8 days earlier at least s, on two checks in a row. (m, s) is chosen by leave-one-outbreak-out. A green is false
+  if OS is more than 0.02 below gold on that day.
+- **Age only** is now a standing baseline.
+
+### Result 1: the Fresh-Days Check as first built made things worse early
+It switched recipes on tiny samples. In COVID week 1 there were about 5 scored patients, and "own" won by chance.
+- COVID 2020 fell to 0.55–0.61 on days 8–20 (age only: 0.727).
+- flu 2017, flu 2019, flu 2021 and other virus 2018 dropped by up to 0.2 in their early weeks.
+- OS beat age only on day 14 in just 12 of 23 outbreaks.
+
+### Result 2: requiring evidence before switching fixes that, but then the Check adds nothing
+Re-scored from the logged replay (`min_evidence`): keep a default recipe until E deaths have been scored on fresh weeks.
+Leave-one-outbreak-out chose E = 100 with default kin for every outbreak.
+
+| Rule | Mean gap to gold, days 0–90 |
+|---|---:|
+| Fresh-Days Check as first built | 0.033 |
+| Fresh-Days Check with E = 100, default kin | 0.005 |
+| **Always kin** (no Fresh-Days Check) | **0.0046** |
+| Always consensus | 0.011 |
+| Always own (no borrowing) | 0.082 |
+
+- The Fresh-Days Check with E = 100 differs from "always kin" in only 6 outbreaks, and is slightly worse there.
+- **Consensus is worse than kin** (0.011 vs 0.005), including for COVID 2020 on day 0 (0.677 vs 0.685).
+  The "borrow only what past outbreaks agree on" fallback did not fix COVID's early weeks.
+
+### Result 3: where OS stands now (E = 100, default kin, seasonal threshold start)
+| Day | 0 | 14 | 28 | 56 | 90 |
+|---|---|---|---|---|---|
+| OS beats age only | 17/23 | 18/23 | **23/23** | 23/23 | 23/23 |
+
+- **COVID 2020:**
+  - days 0–20 ≈ 0.685–0.69, still below age only (0.727), 24 of the first 90 days below;
+  - plateau on day 28 (real data alone: 34);
+  - day 28 0.753, day 90 0.762, gold 0.767.
+- **2013 seasons** (H1N1 as the only kin), now that day 0 is the season start:
+  - flu 2013: 0.628 on day 0, 0.763 on day 28, 0.828 on day 90 (gold 0.827);
+  - other virus 2013: 0.715 on day 0, 0.851 on day 90.
+  - Both are still below age only for about 3 weeks.
+- **Familiar seasons:** at or near gold from day 0, in most cases far ahead of real data alone.
+
+### Result 4: Green Light (computed on the first-built Fresh-Days choices; to be redone on the final rule)
+- 13 outbreaks got a green light within 90 days, **2 of them false**:
+  - flu 2013 on day 36: 0.788 vs gold 0.827;
+  - flu 2017 on day 60: 0.759 vs gold 0.795.
+- 10 never turned green, mostly small seasons that never reached 100 deaths in 90 days.
+- **COVID 2020 turned green on day 44** (0.758 vs gold 0.767, honest; plateau was day 28).
+- Rules chosen: mostly 100 deaths and stability 0.98. The light is conservative: median green day 56.
+
+### Plain reading
+- **The biggest gain in this step came from the seasonal start date, not from the Fresh-Days Check.**
+  With seasons starting when they really start, plain kin borrowing reaches the plateau very early.
+- **Neither the Fresh-Days Check nor the consensus fallback improved on plain kin borrowing.**
+  The Check is only safe when it waits for 100 scored deaths, and by then all recipes agree.
+- **Open problem:** a truly new disease (COVID 2020) and a misleading relative (H1N1 for the 2013 seasons). Every
+  recipe is below age only for the first 3 weeks, so OS has no candidate that is as good as "rank by age" there.
+- **Green Light:** looks promising (11 of 13 greens honest, COVID's honest) but must be recomputed on the final rule.
+
+---
+
 ## 2026-10-06 — Death rate by age across the Outbreak Atlas (`age_profile.py` → `results/age_profile.csv`)
 
 Crude in-hospital death rate (hospitalised patients, known outcome), not adjusted for conditions.
