@@ -4,6 +4,70 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Out-of-country test: Mexico COVID-19 2020 and 2021 (Exp. 11)
+
+### Data
+- Mexico, Secretaría de Salud / Dirección General de Epidemiología, open COVID-19 surveillance (SISVER),
+  year-closure files 2020 and 2021 (`scripts/download_mexico.sh`, SHA-256 recorded).
+- Terms: the DGE "Términos de Libre Uso de Datos Abiertos" (reuse with attribution).
+- Cohort: hospitalised (TIPO_PACIENTE 2), confirmed COVID-19 (CLASIFICACION_FINAL 1–3); death = date of death recorded.
+  - covid_mx_2020: 326,886 patients, 46.0% died.
+  - covid_mx_2021: 297,685 patients, 47.5% died.
+- **Field mapping:** diabetes → metabolic, cardiovascular → heart, EPOC (COPD) → chronic lung, chronic kidney → kidney,
+  immunosuppression, obesity.
+- **What the Mexican form lacks:** no symptoms (fever, cough, …), race, liver, neurological, postpartum or Down
+  syndrome fields.
+- **No data-entry date:** records are ordered by **admission date**, which ignores reporting delay. That is more
+  optimistic than the Brazil replays.
+- **Separate library:** Mexico lives in `data/processed/library_intl.parquet` (selected with `OUTBREAK_LIB`).
+  The Brazil-only library and every earlier result are unchanged.
+- **Settings:** all fixed from the Brazil experiments (vote sharpness 0.01, borrowing strength 10, fallback until
+  20 fresh deaths, Green Light at 20 deaths and stability 0.98). Nothing was tuned on Mexico.
+
+### Fix needed first: compare only fields fob's form collects
+- The first vote gave Mexico 2020 a novelty gap of **7.08** (Brazil COVID 2020: 1.10). The cause was form, not
+  disease: Mexico records no symptoms, so every patient looked like "no fever, no cough" against about 85% fever in Brazil.
+- The Kinship profile now uses only the fields fob's form collects, which is known on day 0.
+- Brazil replays are byte-identical after the change: flu 2016 and COVID 2020 weekly scores both differ by 0.0.
+
+### Kinship Vote (`results/exp11_kinship_mexico*`)
+- **Mexico 2020:**
+  - novelty gap 0.75 (closest past outbreak in hindsight: flu 2019);
+  - Stranger 6–7% in weeks 0–2, 27% in week 3 (474 patients), **97% in week 4** (1,262 patients);
+  - Brazil COVID 2020 for comparison: 52% in week 3 (749 patients), 100% in week 4.
+- **Mexico 2021:**
+  - Mexico 2020 gets 100% of the vote from week 0, Stranger 0%;
+  - in hindsight the runner-up is **Brazil COVID 2020** (−4.44 nats per patient), ahead of every flu season
+    (−4.75 or lower), so same-disease similarity across countries is recognised.
+
+### OS replay (`results/exp11_os_mexico.json`)
+| | Mexico 2020 | Mexico 2021 |
+|---|---|---|
+| Test window (later patients) | July 2020: 48,868 (21,404 deaths) | days 91–182: 34,013 (13,368 deaths) |
+| Gold / age only | 0.698 / **0.693** | 0.680 / 0.674 |
+| OS on day 0 | 0.693 (age fallback) | 0.667 (borrowing from Mexico 2020) |
+| Always borrowing, days 0–20 | 0.61–0.63 | – |
+| Fallback ends | day 22 (20 fresh deaths) | – (not a new group) |
+| OS days 22–34 | **0.635–0.685, below age only** | 0.679 from day 8 |
+| Real data alone | 0.589 (day 18) → 0.685 (day 34) | 0.660 on day 0, 0.679 from day 8 |
+| Green Light | **day 48**, AUC 0.691 (honest) | **day 18**, AUC 0.679 (honest) |
+
+- **What replicated:**
+  - the vote's timing on a new pathogen;
+  - the label fallback (it kept OS about 0.07 above "always borrow" in the first three weeks);
+  - honest Green Lights in both outbreaks.
+- **What did not:** after leaving the fallback on day 22, OS sat below age only for 34 of the 90 days, by up to 0.058.
+  - Real data alone was also below age only over the same days, so the early Mexican patients rank July's patients
+    worse than age does. This is a shift between early and later patients, not a borrowing error.
+  - A stricter exit rule ("leave the fallback only when borrowing beats age on fresh patients") would not have
+    helped: on fresh early weeks borrowing looked better (0.736 vs 0.662). It would also have delayed Brazil COVID's
+    plateau from 28 to 36, so it was not adopted.
+- **With Mexico's fields** (age, sex and 6 conditions, no symptoms), age alone is within 0.005 of gold in both years.
+  There is little room for any learner to beat it. The plateau measure ("within 0.02 of gold") is met by age alone
+  on day 0, so it is not informative here.
+
+---
+
 ## 2026-10-07 — Links between symptoms: dependency-chain generator (Exp. 10)
 
 **Code:** `synth.py` (`fit_chain`, `generate_chain`); config `experiments/exp10_synth_chain.toml`. Same outbreaks,
