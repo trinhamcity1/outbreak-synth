@@ -4,6 +4,109 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Step 4: Synth Release + Glass Box Report (Exp. 9)
+
+**Code:**
+- `os_core.py`: OS's final rule as one piece; rebuilds the state on any day.
+- `synth.py`: the generator and side-by-side comparison.
+- `run_synth_release.py`, `scripts/ctgan_baseline.py`, `glass_box.py`.
+
+**Config:** `experiments/exp09_synth_release.toml`.
+
+**Outputs:**
+- `results/exp09_synth_release.json` and `results/synth_manifest.json` (provenance and SHA-256 of every synthetic file);
+- synthetic files in `data/synthetic/` (git-ignored, names start with `SYNTHETIC_`);
+- reports in `reports/glass_box_*.html`.
+
+**CTGAN baseline:**
+- runs in an isolated environment (`.venv-ctgan`, pinned in `requirements-ctgan.txt`), because installing it
+  downgraded pandas 3.0.6 to 2.3.3 in the main environment; that was reverted;
+- 300 epochs, trained on at most 20,000 of the real records OS had.
+
+### Method
+- **When:** each outbreak's Green Light day under OS's final rule (22 outbreaks).
+- **Generator,** 50,000 rows per outbreak and per generator, from the Two-Part Recipe:
+  - age band, sex and each yes/no field given age band: fob's counts plus pseudo-counts borrowed from the voted
+    relatives, with strength 10 × (1 − Stranger), and none on the new-group fallback;
+  - age: resampled from fob's ages in the band;
+  - state: fob only;
+  - race given state: from fob;
+  - death drawn from OS's risk model.
+- **Labels:** every row has `synthetic=True` and a provenance string (outbreak, day, number of real records and
+  deaths learned from, recipe, seed).
+- **Two fixes made while building this:**
+  1. When the Stranger holds the whole vote, borrowing strength is 0 and rare groups had unbounded coefficients
+     (ages 1–4 in COVID 2020: −18.9, SE 4,597). A minimum shrinkage of 1.0 fixes this with the AUC unchanged
+     (0.758 → 0.758).
+  2. That minimum first pulled towards the relatives' values, which quietly brought borrowing back. It now pulls
+     towards "no effect", and "still borrowed" counts only pulls towards a relative.
+- **Checks:**
+  - fidelity against the real records OS had, and against the later real test window it never saw (with
+    early-real vs later-real as the natural drift reference);
+  - usefulness: AUC on the later window for a ridge model trained on each dataset.
+
+### Usefulness (mean over 22 outbreaks; AUC on later real patients OS never saw)
+| Trained on | Mean AUC |
+|---|---:|
+| Gold (all other real records of the outbreak) | 0.796 |
+| OS's own model | 0.797 |
+| **OS synthetic only** | **0.795** |
+| **Real records OS had + OS synthetic** | **0.795** |
+| Ranking by age alone | 0.733 |
+| Real records OS had, alone | 0.730 |
+| Real + CTGAN synthetic | 0.646 |
+| CTGAN synthetic only | 0.619 |
+
+- **OS synthetic only** is at least as good as the real records alone in **22 of 22** outbreaks, never below age
+  only, and within 0.007 of OS's own model.
+- **Real + OS synthetic** beats real alone in **22 of 22**. For the 16 outbreaks with fewer than 1,000 real
+  records on the green day: 0.723 → 0.805.
+- **CTGAN** (trained on the same real records) is below real alone in 22 of 22 and below age only in 18. Adding
+  it to real data hurts in 21 of 22 (e.g. flu 2014: 131 records, CTGAN-only AUC 0.385). It cannot learn from
+  100–300 patients, which matches the small-sample weakness noted in the brief.
+
+### Fidelity (mean over 22 outbreaks; lower = closer)
+| Comparison | Age KS | Death rate gap | Worst age-band death-rate gap | Yes/no rate gap | Correlation gap (mean / worst) |
+|---|---:|---:|---:|---:|---:|
+| OS synthetic vs real records OS had | 0.058 | 0.004 | 0.108 | 0.009 | 0.052 / 0.389 |
+| CTGAN vs real records OS had | 0.389 | 0.044 | 0.196 | 0.030 | 0.066 / 0.406 |
+| OS synthetic vs later real | 0.159 | 0.033 | 0.101 | 0.026 | 0.044 / 0.311 |
+| Early real vs later real (natural drift) | 0.145 | 0.033 | 0.169 | 0.025 | 0.052 / 0.281 |
+
+- OS synthetic is far closer to the real data than CTGAN on every measure. Its distance from later real patients
+  is about the same as the real data's own drift over time.
+- **Weak spot:** links between fields (worst correlation gap 0.31–0.39). Within an age band, symptoms and conditions
+  are drawn independently.
+- The age-band death-rate gap against early real (0.108) is mostly the Handover Rule at work in small outbreaks.
+  For example, flu 2016 on day 20: babies under 1 get a 7.4% death rate from relatives, while the 8 real babies
+  seen so far all survived.
+
+### Glass Box Report (`reports/`)
+Produced for COVID 2020 on days 14 and 44 and for flu 2016 on day 20.
+- **Contents:** Green Light status with each condition ticked or crossed, the Kinship Vote and Stranger share, the
+  label fallback, a risk table (OS odds ratio with 95% interval, relatives' value, this outbreak alone, share still
+  borrowed, number of patients), recent fresh-week evidence and stability, and Synth Release side by side.
+  Hindsight replay scores are in a separate, clearly marked section.
+- **Example, COVID 2020 on day 44:**
+  - Stranger 100%, so nothing is borrowed;
+  - 75+ vs under 1: odds ratio 15.1 (8.5–26.8);
+  - kidney disease 2.49, obesity 2.43, low oxygen saturation 1.99;
+  - Green Light on (2,822 deaths, stability 0.992).
+
+### Plain reading
+- **Synthetic data from OS carries OS's understanding of the disease, no more and no less.**
+  - It is as useful as OS's own model.
+  - On top of a small real dataset it adds what OS borrowed from past outbreaks, which is where the gain over
+    "real alone" comes from (0.723 → 0.805 for small outbreaks).
+  - It adds no information OS does not have. The Green Light decides when that understanding is good enough to release.
+- **A standard generator trained only on the early real records (CTGAN) fails at these sizes** and makes models
+  worse. That supports the project's starting idea: early synthetic data is only useful if it brings in knowledge
+  from outside the few early records.
+- **Next:** model links between symptoms (e.g. condition on age band and one or two strongly linked fields), and
+  test on non-Brazilian outbreaks.
+
+---
+
 ## 2026-10-07 — Step 3, round 2: age recipes, safety alarm, Green Light redone (Exp. 8)
 
 **Code:** `run_os_replay2.py`, `analyse_os2.py` (incl. `offline_variants`); config `experiments/exp08_os_replay.toml`
