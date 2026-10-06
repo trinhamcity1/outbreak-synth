@@ -20,9 +20,20 @@ from .kinship import (Profile, bernoulli_logpmf, encode, fit_offset, fit_risk, r
 from .library import OUT as LIB, TARGET
 
 
-def day0_of(df, name):
+def day0_of(df, name, mode="jan1", threshold=20):
+    """Day 0 of an outbreak.
+    jan1      - first record, but not before 1 January of the outbreak's year (Exp. 5/6).
+    threshold - for yearly seasons (flu_*, othervirus_*): the first week with at least `threshold` new
+                records, counted from the jan1 day 0 (knowable in real time). COVID and H1N1 keep their
+                first record, which is a real outbreak start."""
     year = int(name.split("_")[-1])
-    return max(df.DT_DIGITA.min(), pd.Timestamp(f"{year}-01-01"))
+    t0 = max(df.DT_DIGITA.min(), pd.Timestamp(f"{year}-01-01"))
+    if mode == "threshold" and name.split("_")[0] in ("flu", "othervirus"):
+        wk = ((df.DT_DIGITA[df.DT_DIGITA >= t0] - t0).dt.days // 7).value_counts().sort_index()
+        hit = wk[wk >= threshold]
+        if len(hit):
+            t0 = t0 + pd.Timedelta(weeks=int(hit.index[0]))
+    return t0
 
 
 def kin_models(lib, starts, fob, cfg):
@@ -105,7 +116,7 @@ def main(cfg_path):
     starts = {}
     parts = {}
     for name, d in lib.groupby("outbreak"):
-        t0 = day0_of(d, name)
+        t0 = day0_of(d, name, cfg.get("day0_mode", "jan1"), cfg.get("season_threshold", 20))
         parts[name] = d[d.DT_DIGITA >= t0].sort_values(["DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable")
         starts[name] = t0
     out, week_rows = {}, []
