@@ -46,10 +46,16 @@ def fob_fields(fob_df):
 def kin_models(lib, starts, fob, cfg, fields=None):
     t0 = starts[fob]
     kins = {}
+    present_day = cfg.get("present_day_atlas", False)
     for k, kd in lib.groupby("outbreak"):
-        if starts[k] >= t0:
+        if k == fob:
             continue
-        kd = kd[kd.DT_DIGITA < t0]
+        # Time-respecting (default): only outbreaks that started before fob, with records entered before fob's
+        # day 0. Present-day Atlas (Exp. 13b): every other outbreak in full ("if this pathogen appeared today").
+        if not present_day:
+            if starts[k] >= t0:
+                continue
+            kd = kd[kd.DT_DIGITA < t0]
         if len(kd) < cfg["min_kin_rows"] or kd[TARGET].sum() < cfg["min_kin_deaths"]:
             continue
         if len(kd) > cfg["max_fit_rows"]:

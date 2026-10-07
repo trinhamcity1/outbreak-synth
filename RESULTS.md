@@ -4,6 +4,55 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Vote-only test on small line lists: Ebola, H7N9, MERS (Exp. 13, 13b)
+
+### Data (`scripts/download_small.sh`, SHA-256 recorded; `library.py --small` → `data/processed/library_small.parquet`)
+| Outbreak | Source and licence | Patients used | Died | Ordered by |
+|---|---|---:|---:|---|
+| Ebola, Sierra Leone 2014 | Kenema Government Hospital (Schieffelin et al.), Zenodo 2614046, "other-open" | 83 EBOV-positive with known outcome | 74.7% | outcome date |
+| H7N9 influenza, China 2013 | R package `outbreaks` 1.9.0 (GPL ≥ 2) | 74 with known outcome and a date | 40.5% | outcome date |
+| MERS, South Korea 2015 | ECDC early-weeks data, R package `outbreaks` 1.9.0 (GPL ≥ 2) | 162 | 11.7% (provisional) | report date |
+
+- **Fields:** age and sex only; their other fields do not match the Atlas. All patients are treated as hospitalised.
+- **Too small for a full test:** these outbreaks cannot support a later test window or a gold AUC, so only the
+  Kinship Vote and Stranger Flag are tested.
+- **Two Atlas modes:**
+  - Exp. 13, time-respecting: only outbreaks that started earlier;
+  - Exp. 13b, present-day: every Brazil and Mexico outbreak, as if the pathogen appeared today (new
+    `present_day_atlas` option; the default is unchanged).
+- Vote sharpness 0.01, as in Brazil.
+
+### Results (final week; full tables in `results/exp13*_votes.csv`)
+| | Time-respecting Atlas | Present-day Atlas |
+|---|---|---|
+| **Ebola** | 5 relatives; Stranger 33%; flu 87% | Stranger 10%; flu 57%, COVID 27%; novelty gap 0.23 |
+| **H7N9** | only H1N1 as relative; Stranger 51% → 66% | Stranger 5%; flu 52%, COVID 28%; closest single relative: **Mexico COVID 2021** |
+| **MERS** | 7 relatives; Stranger 30%; flu 90% | Stranger 7%; **flu 48%, COVID 47%** (COVID 20% in week 0); closest: **COVID 2021** from week 1 |
+
+### What this shows
+1. **With a few hundred patients or fewer, the Stranger cannot win.**
+   - Ebola, with 75% deaths among young adults and a novelty gap of 0.23, never got past 33%.
+   - In Brazil and Mexico the Stranger needed 750–1,300 patients.
+   - For small outbreaks, the **lab-label fallback** (new pathogen group → age trend) is the protection, not the Stranger Flag.
+2. **The vote groups outbreaks by who gets sick and who dies, not by virus family.**
+   - MERS (a coronavirus) moves towards COVID.
+   - So does **H7N9 (an influenza)**: its patients are older with high mortality, like COVID's.
+   - With age and sex only, that is all the vote can see. This is why the lab label stays a separate input.
+3. **Design issue found: groups with more members start ahead.** Every past outbreak starts with an equal vote,
+   so the group shares in week 0 simply reflect group size (flu 11, other virus 10, COVID 5 outbreaks: 43% / 38% / 20%).
+   Recomputing with an equal start **per group** (offline, from the logged scores):
+
+| Final week | Equal start per outbreak (as built) | Equal start per group |
+|---|---|---|
+| MERS | flu 48%, COVID 47% | **COVID 66%**, flu 31% |
+| H7N9 | flu 52%, COVID 28% | COVID 46%, flu 38% |
+| Ebola | flu 57%, COVID 27% | COVID 44%, flu 42% |
+
+   Equal-per-group is fairer when groups differ in size, but switching would change every earlier vote and needs
+   a rerun of Steps 1–3. **Proposed, not adopted.**
+
+---
+
 ## 2026-10-07 — Out-of-country test: Synth Release on Mexico (Exp. 12)
 
 **Run:** `OUTBREAK_LIB=data/processed/library_intl.parquet`, config `experiments/exp12_synth_mexico.toml`.

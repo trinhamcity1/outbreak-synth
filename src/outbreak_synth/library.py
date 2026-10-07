@@ -18,6 +18,7 @@ NEW = Path("data/raw/srag")
 # also holds Mexico (Exp. 11+); building it never touches the Brazil-only file, so earlier results reproduce.
 BRAZIL = Path("data/processed/library.parquet")
 INTL = Path("data/processed/library_intl.parquet")
+SMALL = Path("data/processed/library_small.parquet")  # INTL + three small line lists (vote-only test, Exp. 13)
 OUT = Path(os.environ.get("OUTBREAK_LIB", BRAZIL))
 MEXICO = Path("data/raw/mexico/extracted")
 
@@ -158,6 +159,57 @@ def build_intl():
     return lib
 
 
+def load_small():
+    """Three small, public line lists, coded with age and sex only (their other fields do not match the Atlas).
+    All patients are treated as hospitalised. Records are ordered by the date their outcome became known
+    (the earliest a record is usable for the severity part); MERS has no such date for survivors, so it uses
+    the report date. Sources (see scripts/download_small.sh):
+      ebola_sl_2014 - Kenema Government Hospital, Sierra Leone, May-June 2014 (Schieffelin et al. 2014), Zenodo
+                      record 2614046 (mirador/ebola-data v1.4, licence "other-open"); EBOV-positive, known outcome.
+      h7n9_cn_2013  - influenza A(H7N9), China 2013, R package outbreaks 1.9.0 (GPL >= 2); known outcome only.
+      mers_kr_2015  - MERS-CoV, South Korea 2015, ECDC data from the first weeks, R package outbreaks 1.9.0
+                      (GPL >= 2). Outcome is provisional: "Alive" may include patients who died later."""
+    import pyreadr
+    import rdata
+    base = Path("data/raw/small")
+    parts = []
+    e = pd.read_csv(base / "ebola/mirador-ebola-data-59f6ea0/sources/csv/DemographicsFromSim_schieffelin.csv")
+    e = e[(e.Ebola_dem == "Positive") & e.Outcome.isin(["Died", "Discharged"])]
+    when = pd.to_datetime(e.OutcomeDate, errors="coerce").fillna(pd.to_datetime(e.PreAdmissionDate, errors="coerce"))
+    parts.append(pd.DataFrame({"outbreak": "ebola_sl_2014", "id": "SL-" + e.GID.astype(str), "DT_DIGITA": when,
+                               "DT_SIN_PRI": when, "age": pd.to_numeric(e.Age, errors="coerce"),
+                               "CS_SEXO": e.Sex.map({"Female": "F", "Male": "M"}), "SG_UF_NOT": "SL",
+                               TARGET: (e.Outcome == "Died").astype(int)}))
+    h = pyreadr.read_r(str(base / "outbreaks_pkg/outbreaks/data/fluH7N9_china_2013.RData"))["fluH7N9_china_2013"]
+    h = h[h.outcome.notna()]
+    when = pd.to_datetime(h.date_of_outcome, errors="coerce").fillna(pd.to_datetime(h.date_of_onset, errors="coerce"))
+    parts.append(pd.DataFrame({"outbreak": "h7n9_cn_2013", "id": "CN-" + h.case_id.astype(str), "DT_DIGITA": when,
+                               "DT_SIN_PRI": pd.to_datetime(h.date_of_onset, errors="coerce"),
+                               "age": pd.to_numeric(h.age.astype(str), errors="coerce"),
+                               "CS_SEXO": h.gender.astype(str).map({"f": "F", "m": "M"}),
+                               "SG_UF_NOT": "CN-" + h.province.astype(str), TARGET: (h.outcome == "Death").astype(int)}))
+    m = rdata.read_rda(str(base / "outbreaks_pkg/outbreaks/data/mers_korea_2015.RData"))["mers_korea_2015"]["linelist"]
+    day = lambda x: pd.to_datetime("1970-01-01") + pd.to_timedelta(pd.to_numeric(x, errors="coerce"), unit="D")
+    parts.append(pd.DataFrame({"outbreak": "mers_kr_2015", "id": "KR-" + m.id.astype(str), "DT_DIGITA": day(m.dt_report),
+                               "DT_SIN_PRI": day(m.dt_onset), "age": pd.to_numeric(m.age, errors="coerce"),
+                               "CS_SEXO": m.sex.astype(str).map({"F": "F", "M": "M"}), "SG_UF_NOT": "KR",
+                               TARGET: (m.outcome.astype(str) == "Dead").astype(int)}))
+    out = []
+    for df in parts:
+        name = df.outbreak.iloc[0]
+        df = df[df.DT_DIGITA.notna()].copy()
+        df["CS_RACA"] = pd.NA
+        out.append(_finish(df.reset_index(drop=True), name))
+    return pd.concat(out, ignore_index=True)
+
+
+def build_small():
+    lib = pd.concat([pd.read_parquet(INTL), load_small()], ignore_index=True)
+    lib = lib.sort_values(["outbreak", "DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable").reset_index(drop=True)
+    lib.to_parquet(SMALL, index=False)
+    return lib
+
+
 def summary(lib):
     g = lib.groupby("outbreak")
     s = pd.DataFrame({
@@ -170,7 +222,8 @@ def summary(lib):
 
 if __name__ == "__main__":
     import sys
-    lib = build_intl() if "--intl" in sys.argv else build()
+    lib = build_small() if "--small" in sys.argv else build_intl() if "--intl" in sys.argv else build()
     s = summary(lib)
     print(s.to_string())
-    s.to_csv("results/library_intl_summary.csv" if "--intl" in sys.argv else "results/library_summary.csv")
+    s.to_csv("results/library_small_summary.csv" if "--small" in sys.argv else
+             "results/library_intl_summary.csv" if "--intl" in sys.argv else "results/library_summary.csv")

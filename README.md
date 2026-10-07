@@ -47,6 +47,12 @@ export OUTBREAK_LIB=data/processed/library_intl.parquet
 PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp11_kinship_mexico.toml
 PYTHONPATH=src python -m outbreak_synth.run_os_replay2 experiments/exp11_os_mexico.toml
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp12_synth_mexico.toml
+# Vote-only test on small line lists (Ebola 2014, H7N9 2013, MERS 2015)
+./scripts/download_small.sh && PYTHONPATH=src python -m outbreak_synth.library --small
+export OUTBREAK_LIB=data/processed/library_small.parquet
+PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp13_vote_small.toml
+PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp13b_vote_small_present.toml
+PYTHONPATH=src python -m outbreak_synth.analyse_vote_small exp13_vote_small exp13b_vote_small_present
 ```
 
 ## Data sources
