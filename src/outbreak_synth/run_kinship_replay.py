@@ -20,6 +20,16 @@ from .kinship import (KIN_FIELDS, Profile, bernoulli_logpmf, encode, fit_offset,
 from .library import OUT as LIB, TARGET
 
 
+KNOWN_COL = {"known": "DT_KNOWN", "closure": "DT_KNOWN_CLOSE"}
+
+
+def known_days(df, t0, timing):
+    """Days from t0 until each record's outcome is usable. timing='entry' reproduces Exp. 2-13 (outcome usable
+    as soon as the record is entered); 'known'/'closure' use the dates added in Exp. 14 (NaN = never usable)."""
+    col = "DT_DIGITA" if timing == "entry" else KNOWN_COL[timing]
+    return (df[col] - t0).dt.days.to_numpy(dtype=float)
+
+
 def day0_of(df, name, mode="jan1", threshold=20):
     """Day 0 of an outbreak.
     jan1      - first record, but not before 1 January of the outbreak's year (Exp. 5/6).
@@ -56,6 +66,8 @@ def kin_models(lib, starts, fob, cfg, fields=None):
             if starts[k] >= t0:
                 continue
             kd = kd[kd.DT_DIGITA < t0]
+            if cfg.get("outcome_timing", "entry") != "entry":  # only outcomes already known on fob's day 0
+                kd = kd[kd[KNOWN_COL[cfg["outcome_timing"]]] < t0]
         if len(kd) < cfg["min_kin_rows"] or kd[TARGET].sum() < cfg["min_kin_deaths"]:
             continue
         if len(kd) > cfg["max_fit_rows"]:
@@ -89,6 +101,8 @@ def hindsight(fob_df, kins, cfg, fields=None):
 def replay(fob_df, kins, cfg, fields=None):
     t0 = fob_df.DT_DIGITA.min()
     week = ((fob_df.DT_DIGITA - t0).dt.days // 7).to_numpy()
+    # Severity is scored when an outcome becomes usable (same as entry week under the old timing).
+    kweek = np.floor(known_days(fob_df, t0, cfg.get("outcome_timing", "entry")) / 7)
     age, sex, yes, X = encode(fob_df, fields)
     y = fob_df[TARGET].to_numpy()
     base = {k: risk_logit(r, X) for k, (_, r, _) in kins.items()}
@@ -97,26 +111,28 @@ def replay(fob_df, kins, cfg, fields=None):
     cum = {part: dict.fromkeys(names, 0.0) for part in ("profile", "severity")}
     rows = []
     for w in range(cfg["weeks"]):
-        past, now = week < w, week == w
-        if not now.any():
+        past, now = week < w, week == w            # patient mix: by entry week
+        pastk, nowk = kweek < w, kweek == w         # who dies: by the week the outcome became usable
+        if not now.any() and not nowk.any():
             continue
-        yp = y[past]
+        yp = y[pastk]
         for k in kins:
-            b = fit_offset(base[k][past], yp)
+            b = fit_offset(base[k][pastk], yp)
             cum["profile"][k] += prof_ll[k][now].sum()
-            cum["severity"][k] += bernoulli_logpmf(base[k][now] + b, y[now]).sum()
+            cum["severity"][k] += bernoulli_logpmf(base[k][nowk] + b, y[nowk]).sum()
         # Stranger: fob's own earlier records only (flat start when there are none).
         own_prof = Profile().fit(age[past], sex[past], yes[past])
         cum["profile"]["STRANGER"] += own_prof.logpdf(age[now], sex[now], yes[now]).sum()
-        own_risk = fit_risk(X[past], yp, C=cfg["own_C"]) if past.sum() >= cfg["own_min_rows"] else None
+        own_risk = fit_risk(X[pastk], yp, C=cfg["own_C"]) if pastk.sum() >= cfg["own_min_rows"] else None
         if own_risk is not None:
-            lg = risk_logit(own_risk, X[now])
+            lg = risk_logit(own_risk, X[nowk])
         else:  # base rate with a weak prior
             r = (yp.sum() + 1) / (len(yp) + 2)
-            lg = np.full(now.sum(), np.log(r / (1 - r)))
-        cum["severity"]["STRANGER"] += bernoulli_logpmf(lg, y[now]).sum()
+            lg = np.full(nowk.sum(), np.log(r / (1 - r)))
+        cum["severity"]["STRANGER"] += bernoulli_logpmf(lg, y[nowk]).sum()
         total = {n: cum["profile"][n] + cum["severity"][n] for n in names}
-        rows.append({"week": w, "n_so_far": int((week <= w).sum()), "deaths_so_far": int(y[week <= w].sum()),
+        rows.append({"week": w, "n_so_far": int((week <= w).sum()), "deaths_so_far": int(y[kweek <= w].sum()),
+                     "outcomes_known_so_far": int((kweek <= w).sum()),
                      **{f"score_total::{n}": total[n] for n in names},
                      **{f"score_profile::{n}": cum["profile"][n] for n in names},
                      **{f"score_severity::{n}": cum["severity"][n] for n in names}})

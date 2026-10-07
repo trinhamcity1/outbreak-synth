@@ -64,7 +64,19 @@ def _finish(df, outbreak):
     df["SG_UF_NOT"] = df.SG_UF_NOT.fillna("missing")
     df["age"] = df.age.clip(0, 110)
     df["outbreak"] = outbreak
-    return df[["outbreak", "id", "DT_DIGITA", "DT_SIN_PRI"] + FEATURES + [TARGET]]
+    # When the outcome became usable (Exp. 14+). DT_KNOWN: the later of entry and outcome date (the outcome had
+    # happened and the record existed), falling back to the closure date when no outcome date is recorded.
+    # DT_KNOWN_CLOSE (cautious): the later of entry and closure date. Sources without these dates (Mexico, small
+    # line lists) get the entry date, i.e. the old timing.
+    out_d = df["DT_OUTCOME"] if "DT_OUTCOME" in df else pd.Series(pd.NaT, index=df.index)
+    close_d = df["DT_CLOSE"] if "DT_CLOSE" in df else pd.Series(pd.NaT, index=df.index)
+    if "DT_OUTCOME" in df or "DT_CLOSE" in df:
+        df["DT_KNOWN"] = pd.concat([df.DT_DIGITA, out_d.fillna(close_d)], axis=1).max(axis=1, skipna=False)
+        df["DT_KNOWN_CLOSE"] = pd.concat([df.DT_DIGITA, close_d], axis=1).max(axis=1, skipna=False)
+    else:
+        df["DT_KNOWN"] = df.DT_DIGITA
+        df["DT_KNOWN_CLOSE"] = df.DT_DIGITA
+    return df[["outbreak", "id", "DT_DIGITA", "DT_SIN_PRI"] + FEATURES + [TARGET, "DT_KNOWN", "DT_KNOWN_CLOSE"]]
 
 
 def load_old(year):
@@ -73,8 +85,10 @@ def load_old(year):
     df = pd.read_csv(OLD / f"INFLUD{year:02d}.csv", sep=";", dtype=str, encoding="latin-1")
     df = df[_num(df.HOSPITAL) == 1].copy()
     df["id"] = f"{year:02d}-" + df.index.astype(str)
-    for c in ["DT_DIGITA", "DT_SIN_PRI"]:
+    for c in ["DT_DIGITA", "DT_SIN_PRI", "DT_OBITO", "DT_ENCERRA"]:
         df[c] = pd.to_datetime(df[c], format="%d/%m/%Y", errors="coerce")
+    # 2012+ forms: DT_OBITO = date of discharge or death; 2009 form: date of death only.
+    df["DT_OUTCOME"], df["DT_CLOSE"] = df["DT_OBITO"], df["DT_ENCERRA"]
     raw_age = _num(df.NU_IDADE_N)
     unit = (raw_age // 1000).map({1: 1 / (365.25 * 24), 2: 1 / 365.25, 3: 1 / 12, 4: 1.0})
     df["age"] = (raw_age % 1000) * unit
@@ -87,11 +101,12 @@ def load_old(year):
 
 
 def load_new(path):
-    cols = ["NU_NOTIFIC", "DT_DIGITA", "DT_SIN_PRI", "CLASSI_FIN", "HOSPITAL", "EVOLUCAO", "NU_IDADE_N",
+    cols = ["NU_NOTIFIC", "DT_DIGITA", "DT_SIN_PRI", "DT_EVOLUCA", "DT_ENCERRA", "CLASSI_FIN", "HOSPITAL", "EVOLUCAO", "NU_IDADE_N",
             "TP_IDADE", "CS_SEXO", "CS_RACA", "SG_UF_NOT", "DIABETES"] + [c for c in YESNO if c != "METABOLIC"]
     df = pd.read_parquet(path, columns=cols)
     df = df[_num(df.HOSPITAL) == 1].copy()
     df["id"] = df.NU_NOTIFIC.astype(str)
+    df["DT_OUTCOME"], df["DT_CLOSE"] = df["DT_EVOLUCA"], df["DT_ENCERRA"]
     unit = _num(df.TP_IDADE).map({1: 1 / 365.25, 2: 1 / 12, 3: 1.0})
     df["age"] = _num(df.NU_IDADE_N) * unit
     df["METABOLIC"] = df["DIABETES"]

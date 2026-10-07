@@ -17,7 +17,7 @@ from scipy.special import expit
 from .analyse_os2 import final_paths
 from .library import OUT as LIB, TARGET, YESNO
 from .recipe import collected_fields, design, fit_map, kin_prior
-from .run_kinship_replay import day0_of
+from .run_kinship_replay import KNOWN_COL, day0_of, known_days
 from .run_recipe_replay import weekly_votes
 from .run_os_replay2 import age_x
 
@@ -30,8 +30,11 @@ CFG = {"lam0": 10.0, "day0_mode": "threshold", "season_threshold": 20, "max_fit_
        "vote_prior": "outbreak", "kinship_analysis": None}
 # OS as currently adopted (2026-10-07): Kinship Vote starts equal per pathogen group (Exp. 5c / 8c). CFG above
 # keeps the settings behind Exp. 9, 10 and 12 so they still reproduce.
-FINAL_CFG = {**CFG, "os_run": "exp08c_os_replay_groupprior", "kinship_analysis": "exp05c_kinship_groupprior",
-             "vote_prior": "group"}
+FINAL_CFG_ENTRY_TIMING = {**CFG, "os_run": "exp08c_os_replay_groupprior", "kinship_analysis": "exp05c_kinship_groupprior",
+                          "vote_prior": "group"}
+# Adopted 2026-10-07 (Exp. 14): outcomes usable only once known (DT_KNOWN). Replaces the entry-timing settings above.
+FINAL_CFG = {**CFG, "os_run": "exp08d_os_replay_known", "kinship_run": "exp05d_kinship_known",
+             "kinship_analysis": "exp05d_kinship_known", "vote_prior": "group", "outcome_timing": "known"}
 from .library import family as fam
 
 
@@ -40,7 +43,7 @@ class OSState:
     fob: str
     day: int
     t0: pd.Timestamp
-    records: pd.DataFrame          # fob's records entered up to `day`
+    records: pd.DataFrame          # fob's records entered up to `day` (patient mix)
     later: pd.DataFrame            # fob's records entered after `day` (never seen by OS on that day)
     recipe: str                    # "kin" or "age_trend"
     votes: dict                    # past outbreak -> share (among past outbreaks)
@@ -56,6 +59,7 @@ class OSState:
     green_now: bool
     path: pd.DataFrame = field(repr=False, default=None)
     kin_profiles: dict = field(repr=False, default_factory=dict)
+    known: pd.DataFrame = field(repr=False, default=None)  # records whose outcome was usable by `day` (who dies)
 
 
 def _laplace(M, y, c0, c, lam):
@@ -87,13 +91,18 @@ def build_state(fob, day=None, cfg=CFG, lib=None):
     d = d[d.DT_DIGITA >= t0].sort_values(["DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable")
     dd = (d.DT_DIGITA - t0).dt.days.to_numpy()
     rec, later = d[dd <= day], d[dd > day]
-    X, meta = design(rec)
-    y = rec[TARGET].to_numpy()
+    timing = cfg.get("outcome_timing", "entry")
+    kd_ = np.nan_to_num(known_days(rec, t0, timing), nan=np.inf)
+    known = rec[kd_ <= day]
+    X, meta = design(known)
+    y = known[TARGET].to_numpy()
     lam0 = cfg["lam0"]
 
     kin_coefs, kin_fields, kin_slope, kin_prof = {}, {}, [], {}
     for k in kin_list:
         kd = lib[(lib.outbreak == k) & (lib.DT_DIGITA < t0)]
+        if timing != "entry":
+            kd = kd[kd[KNOWN_COL[timing]] < t0]
         if len(kd) > cfg["max_fit_rows"]:
             kd = kd.sample(cfg["max_fit_rows"], random_state=0)
         Xk, _ = design(kd)
@@ -107,7 +116,7 @@ def build_state(fob, day=None, cfg=CFG, lib=None):
     recipe = path.loc[path.day <= day, "chosen"].iloc[-1]
 
     if recipe == "age_trend":
-        M, mu, lam = age_x(rec, 50.0), np.array([float(np.median(kin_slope))]), np.array([lam0])
+        M, mu, lam = age_x(known, 50.0), np.array([float(np.median(kin_slope))]), np.array([lam0])
         meta_used = [("age_trend_per_20y", "age", True)]
     else:
         mu, have = kin_prior(kin_coefs, kin_fields, past, meta)
@@ -123,7 +132,7 @@ def build_state(fob, day=None, cfg=CFG, lib=None):
     return OSState(fob=fob, day=int(day), t0=t0, records=rec, later=later, recipe=recipe, votes=past,
                    stranger=float(stranger), new_group=new_group, intercept=float(c0), coef=c, se=se, prior_mu=mu,
                    borrowed_share=share, meta=meta_used, green_day=gday, green_now=gday is not None and day >= gday,
-                   path=path, kin_profiles=kin_prof)
+                   path=path, kin_profiles=kin_prof, known=known)
 
 
 def risk(state, df):

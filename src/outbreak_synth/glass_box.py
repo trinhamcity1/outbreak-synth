@@ -64,7 +64,7 @@ def table(df, num_cols=()):
 def report(fob, day=None, lib=None):
     lib = pd.read_parquet(LIB) if lib is None else lib
     s = build_state(fob, day, cfg=FINAL_CFG, lib=lib)
-    rec, y = s.records, s.records[TARGET].to_numpy()
+    rec, y = s.known, s.known[TARGET].to_numpy()  # outcomes OS could see on that day
     date = (s.t0 + pd.Timedelta(days=s.day)).date()
     p = s.path.set_index("day")
     row = p.loc[p.index[p.index <= s.day][-1]]
@@ -74,8 +74,9 @@ def report(fob, day=None, lib=None):
     out = [f"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
            f"<title>Glass Box: {fob}</title>{css()}</head><body><main>",
            f"<h1>Glass Box Report: {fob.replace('_', ' ')}</h1>",
-           f"<p class='sub'>Day {s.day} of the outbreak ({date}; day 0 = {s.t0.date()}). OS has seen {len(rec):,} real "
-           f"hospitalised patients, {int(y.sum()):,} deaths ({y.mean():.1%}). Outbreak Synth (OS) v1.</p>",
+           f"<p class='sub'>Day {s.day} of the outbreak ({date}; day 0 = {s.t0.date()}). OS has seen {len(s.records):,} real "
+           f"hospitalised patients; {len(rec):,} of them have a known outcome so far, with {int(y.sum()):,} deaths ({y.mean():.1%}). "
+           f"Outbreak Synth (OS) v1.</p>",
            f"<div class='card'>{status}<br>"]
     reasons = [f"deaths so far: {int(y.sum())} (needs at least 20) {'✓' if y.sum() >= 20 else '✗'}",
                f"stability of the risk ranking vs 8 days earlier: {row.stability:.3f} (needs at least 0.98 on two checks in a row) "

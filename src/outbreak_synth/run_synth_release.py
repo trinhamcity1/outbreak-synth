@@ -58,11 +58,12 @@ def main(cfg_path):
         s = build_state(fob, lib=lib, cfg={**OS_CFG, "os_run": cfg["os_run"],
                                            "kinship_run": cfg.get("kinship_run", OS_CFG["kinship_run"]),
                                            "kinship_analysis": cfg.get("kinship_analysis"),
-                                           "vote_prior": cfg.get("vote_prior", "outbreak")})
+                                           "vote_prior": cfg.get("vote_prior", "outbreak"),
+                                           "outcome_timing": cfg.get("outcome_timing", "entry")})
         lo, hi = info[fob]["info"]["test_days"]
         dd = (s.later.DT_DIGITA - s.t0).dt.days
         test = s.later[(dd >= lo) & (dd <= hi)]
-        early = s.records
+        early = s.known if s.known is not None else s.records  # real records with an outcome OS could see
         gen = generate_chain if cfg.get("profile_model", "independent") == "chain" else generate
         syn = gen(s, cfg["n_rows"], seed=cfg["seed"])
         tag = "os_chain" if gen is generate_chain else "os"

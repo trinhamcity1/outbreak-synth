@@ -27,7 +27,7 @@ from sklearn.metrics import roc_auc_score
 
 from .library import OUT as LIB, TARGET
 from .recipe import collected_fields, design, fit_map, kin_prior
-from .run_kinship_replay import day0_of
+from .run_kinship_replay import KNOWN_COL, day0_of, known_days
 from .run_os_replay import consensus_prior
 from .run_recipe_replay import weekly_votes
 
@@ -46,6 +46,8 @@ def run_one(fob, cfg, kin_list, tau, weeks_path):
     t0 = day0_of(d, fob, cfg["day0_mode"], cfg["season_threshold"])
     d = d[d.DT_DIGITA >= t0].sort_values(["DT_DIGITA", "DT_SIN_PRI", "id"], kind="stable")
     day = (d.DT_DIGITA - t0).dt.days.to_numpy()
+    timing = cfg.get("outcome_timing", "entry")
+    kday = np.nan_to_num(known_days(d, t0, timing), nan=np.inf)  # day each outcome became usable
     spec = cfg.get("override", {}).get(fob, {})
     lo, hi = spec.get("test_from_day", cfg["test_from_day"]), spec.get("test_to_day", cfg["test_to_day"])
     X, meta = design(d)
@@ -63,6 +65,8 @@ def run_one(fob, cfg, kin_list, tau, weeks_path):
     kin_coefs, kin_fields, kin_slope = {}, {}, []
     for k in kin_list:
         kd = lib[(lib.outbreak == k) & (lib.DT_DIGITA < t0)]
+        if timing != "entry":
+            kd = kd[kd[KNOWN_COL[timing]] < t0]
         if len(kd) > cfg["max_fit_rows"]:
             kd = kd.sample(cfg["max_fit_rows"], random_state=0)
         Xk, _ = design(kd)
@@ -99,27 +103,28 @@ def run_one(fob, cfg, kin_list, tau, weeks_path):
     n_weeks = cfg["max_day"] // 7 + 1
     fresh = {c: np.full(len(y), np.nan) for c in CANDS}
     for u in range(n_weeks):
-        now = day // 7 == u
+        now = np.floor(kday / 7) == u       # outcomes that became usable in week u
         if not now.any():
             continue
         for c in CANDS:
-            M, c0, cc = fit(c, day < 7 * u, u - 1)
+            M, c0, cc = fit(c, kday < 7 * u, u - 1)
             fresh[c][now] = c0 + M[now] @ cc
 
     rows, betas = [], {}
     for dd in range(0, cfg["max_day"] + 1, cfg["day_step"]):
-        tr = day <= dd
-        row = {"day": dd, "n": int(tr.sum()), "deaths": int(y[tr].sum())}
+        tr = day <= dd                       # entered by day dd (used for stability)
+        trk = tr & (kday <= dd)              # ... with an outcome usable by day dd (used for every fit)
+        row = {"day": dd, "n": int(tr.sum()), "n_known": int(trk.sum()), "deaths": int(y[trk].sum())}
         k_ = row["deaths"]
-        if min(k_, row["n"] - k_) >= cfg["min_class"]:
-            c0, c = fit_map(X[tr], y[tr])
+        if min(k_, row["n_known"] - k_) >= cfg["min_class"]:
+            c0, c = fit_map(X[trk], y[trk])
             row["real_only"] = roc_auc_score(yt, c0 + X[test] @ c)
-        scored = day < 7 * (dd // 7)
+        scored = kday < 7 * (dd // 7)
         row["fresh_n"], row["fresh_deaths"] = int(scored.sum()), int(y[scored].sum())
         both = 0 < y[scored].sum() < scored.sum()
         betas[dd] = {}
         for c in CANDS:
-            M, c0, cc = fit(c, tr, dd // 7 - 1)
+            M, c0, cc = fit(c, trk, dd // 7 - 1)
             betas[dd][c] = (M, cc)
             row[f"auc_{c}"] = roc_auc_score(yt, c0 + M[test] @ cc)
             row[f"fresh_auc_{c}"] = roc_auc_score(y[scored], fresh[c][scored]) if both else np.nan
