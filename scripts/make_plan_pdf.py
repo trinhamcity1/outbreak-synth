@@ -46,7 +46,7 @@ def flow():
     """Daily loop: fob rows -> Kinship Vote -> Two-Part Recipe -> Fresh-Days Check -> Green Light -> Synth."""
     w, h = 7.0 * inch, 2.0 * inch
     d = Drawing(w, h)
-    boxes = [("fob's data", "so far"), ("Kinship", "Vote"), ("Two-Part", "Recipe"), ("Fresh-Days", "Check"),
+    boxes = [("fob's data", "so far"), ("Kinship", "Vote"), ("Two-Part", "Recipe"), ("Lab-Label", "Fallback?"),
              ("Green", "Light?"), ("Synth", "Release")]
     bw, bh, gap, y = 0.95 * inch, 0.62 * inch, 0.24 * inch, 0.85 * inch
     xs = [i * (bw + gap) for i in range(len(boxes))]
@@ -80,163 +80,124 @@ def footer(c, doc):
     c.saveState()
     c.setFont("Sans", 7.5)
     c.setFillColor(MUTED)
-    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v2 · 2026-10-06")
+    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v3 · 2026-10-07")
     c.drawRightString(7.75 * inch, 0.5 * inch, f"Page {doc.page}")
     c.restoreState()
 
 
 story = [
     P("Outbreak Synth (OS)", s_title),
-    P("One general method, two case studies. OS studies the past, follows something new day by day, says when it "
-      "understands it, and only then generates synthetic data. Case Study 1: a new disease outbreak. "
-      "Case Study 2: side-effect signals from a new vaccine.", s_sub),
+    P("Plan v3: what has been built and learned (Case Study 1, early outbreaks), and what comes next. "
+      "OS studies past outbreaks, follows a new one day by day, says when it understands it, and only then "
+      "releases synthetic patient data.", s_sub),
 
-    P("1. The idea", s_h),
-    P("Something new appears, which we call <b>fob</b>. In Case Study 1, fob is a new disease; in Case Study 2, it is a "
-      "new vaccine being rolled out. At first there are only a few records. Years later there are millions, but by then "
-      "it is too late to help. OS asks: <b>can we understand fob early</b>, by combining its first records with "
-      "everything learned from similar things in the past, and <b>know when that understanding is good enough</b> to "
-      "act on and to generate data from?"),
-    P("The contribution is the <b>method</b>: choosing what to learn from (Kinship Vote), what to borrow and for how "
-      "long (Handover Rule), checking itself on fresh data (Fresh-Days Check), deciding when it is ready (Green Light), "
-      "and explaining every decision (Glass Box Report). Two different case studies show it works beyond one setting."),
-    table([
-        ["", "Case Study 1: early outbreak", "Case Study 2: vaccine side-effect signals"],
-        ["<b>fob</b>", "A new disease", "A new vaccine being rolled out"],
-        ["<b>Time step</b>", "Days since the first patient record", "Weeks since rollout began"],
-        ["<b>Atlas</b>", "Outbreak Atlas: past outbreaks", "Vaccine Atlas: past vaccines and their known side effects"],
-        ["<b>Kin</b>", "Outbreaks with similar patients and severity",
-         "Vaccines of the same type (mRNA, viral vector, inactivated) or used in the same age groups"],
-        ["<b>What OS learns</b>", "Who is hospitalised and who dies", "Which side effects occur more often than expected, and in whom"],
-        ["<b>Score</b>", "AUC on later patients; the day OS reaches the plateau",
-         "Weeks until a real signal is caught; number of false alarms"],
-        ["<b>Green Light means</b>", "'I understand this disease well enough to generate data'",
-         "'This signal is real' (or 'no signal yet')"],
-        ["<b>Data status</b>", "Done: Brazil SIVEP-Gripe, CC-BY, 24 outbreaks", "To check: public reporting systems (see section 7)"],
-    ], [1.25 * inch, 2.75 * inch, 3.0 * inch]),
+    P("1. The idea in one paragraph", s_h),
+    P("Something new appears, which we call <b>fob</b>. In Case Study 1 it is a new disease outbreak; in Case Study 2 "
+      "(planned) it is a new vaccine. At first there are only a few records. OS combines them with what it learned from "
+      "similar past outbreaks, keeps checking itself, and turns on a <b>Green Light</b> when its understanding is good "
+      "enough. Only then does it generate synthetic patients. The contribution is the <b>method</b>: deciding what to learn "
+      "from, how much to borrow and for how long, when it is ready, and explaining every decision."),
 
-    P("2. The parts of OS (shared by both case studies)", s_h),
+    P("2. Data used so far (all public, all cited in the repository)", s_h),
     table([
-        ["Name", "What it does", "Question it answers"],
-        ["<b>Atlas</b>", "The library of the past, mapped to the same fields. Case Study 1: the <b>Outbreak Atlas</b> "
-         "(24 Brazilian outbreaks, about 2.15 million patients). Case Study 2: the <b>Vaccine Atlas</b>.",
-         "What have we seen before?"],
-        ["<b>Kinship Vote</b>", "Every past entry's model tries to predict fob's actual records. The better it predicts them, "
-         "the more votes it gets. Votes are shares that add to 100%, e.g. 55% flu-2016, 30% H1N1, 15% Stranger.",
-         "What is fob related to, and how sure are we?"],
-        ["<b>Stranger Flag</b>", "A 'none of the above' candidate that assumes nothing from the past. If it wins the "
-         "Kinship Vote, fob is flagged as new and OS stops borrowing.", "Is fob unlike anything we have seen?"],
-        ["<b>Two-Part Recipe</b>", "OS's model of fob. A <b>Profile Model</b> describes who is affected; a <b>Severity "
-         "Model</b> describes what happens to them (death in Case Study 1; side effect in Case Study 2).",
-         "What does fob look like, and what does it do?"],
-        ["<b>Handover Rule</b>", "fob's overall rate (how deadly it is, or how often a side effect occurs) is always learned "
-         "from fob's own data. How much each risk factor matters is borrowed from kin at first, then handed over to fob's own "
-         "data as it grows. The handover speed is learned from the past.", "What should we borrow, and for how long?"],
-        ["<b>Fresh-Days Check</b>", "Each candidate recipe trains on fob's data up to a few days (or weeks) ago and is scored "
-         "on the newest data. A recipe that looked right by kinship but fails here loses.", "Is the borrowed knowledge working on fob?"],
-        ["<b>Green Light</b>", "The readiness signal. It turns green when the Fresh-Days score is stable, the key quantities "
-         "are pinned down, and similar past cases were ready at a similar point. Until then OS says 'not yet'.",
-         "Is OS ready to act or generate?"],
-        ["<b>Synth Release</b>", "Only after the Green Light: draw synthetic rows from the Two-Part Recipe, check them side "
-         "by side with fob's real data, and label every file as synthetic.", "Give scientists usable data."],
-        ["<b>Glass Box Report</b>", "A readable daily report: the Kinship Vote and why, a risk table (past effect vs fob's "
-         "effect, with uncertainty), and why the light is green or not. An expert can read it and veto it.",
-         "Why did OS decide this?"],
-        ["<b>OC (Outbreak Comprehension)</b>", "The whole learning step: Kinship Vote + Two-Part Recipe + Handover Rule + "
-         "Fresh-Days Check. OC is what improves as data arrives.", "How well does OS understand fob today?"],
-    ], [1.3 * inch, 3.9 * inch, 1.8 * inch]),
+        ["Source", "What", "Used for"],
+        ["Brazil SIVEP-Gripe (Ministry of Health, CC-BY)", "24 outbreaks 2009–2022: H1N1 2009, flu and other-virus seasons, "
+         "COVID-19 2020–22; about 2.15 million hospitalised patients", "Outbreak Atlas; all replays"],
+        ["Mexico SISVER (Secretaría de Salud, free-use terms)", "COVID-19 2020 and 2021: 326,886 and 297,685 hospitalised patients",
+         "Out-of-country test, settings fixed from Brazil"],
+        ["Kenema Ebola 2014 (Zenodo); H7N9 China 2013, MERS Korea 2015 (R package outbreaks, GPL)",
+         "83, 74 and 162 patients; age and sex only", "Vote-only test on very different pathogens"],
+    ], [2.3 * inch, 3.0 * inch, 1.7 * inch]),
+
+    P("3. The parts of OS, as built", s_h),
+    table([
+        ["Name", "What it does now", "Status"],
+        ["<b>Outbreak Atlas</b>", "Past outbreaks mapped to shared fields (age, sex, race, state, 6 symptoms, 10 conditions). "
+         "Fields a form never collected are 'missing'.", "Built (Brazil + Mexico)"],
+        ["<b>Kinship Vote</b>", "Each past outbreak predicts fob's new patients each week (patient mix + who dies, with fob's own "
+         "death rate). Better predictions earn more votes. It compares only fields fob's form collects.", "Built, tested"],
+        ["<b>Stranger Flag</b>", "A 'none of the above' candidate learning from fob alone. Winning early means fob is new.", "Built, tested"],
+        ["<b>Lab-Label Fallback</b>", "New: if the lab says fob's pathogen group has no earlier member in the Atlas, OS uses an "
+         "age-trend model until 20 deaths have been scored, then borrows.", "Built, tested"],
+        ["<b>Two-Part Recipe</b>", "Profile Model (who is hospitalised) + Severity Model (who dies). Severity: logistic regression "
+         "with priors from voted relatives.", "Built"],
+        ["<b>Handover Rule</b>", "Borrowing strength 10 × (1 − Stranger share). Never borrowed: overall death rate, geography. "
+         "A minimum restraint pulls towards 'no effect' (not towards relatives) so rare groups stay sensible.", "Built, tuned on Brazil"],
+        ["<b>Fresh-Days Check</b>", "Scores recipes on fob's newest unseen patients. As a recipe switcher it did not help "
+         "(see section 5); kept as evidence in the Glass Box Report.", "Built; no gain"],
+        ["<b>Green Light</b>", "At least 20 deaths, and OS's risk ranking of fob's patients stable (rank correlation of 0.98 or more vs 8 days "
+         "earlier) on two checks in a row, and not on the fallback.", "Built, tested"],
+        ["<b>Synth Release</b>", "After the Green Light: synthetic patients from the Two-Part Recipe. Symptoms and conditions come "
+         "from a <b>Dependency Chain</b> (each given age band, sex and the fields before it). Every row is labelled synthetic with provenance.", "Built, tested"],
+        ["<b>Glass Box Report</b>", "An HTML page per outbreak and day: Green Light conditions, Kinship Vote, risk table (odds "
+         "ratios, relatives' values, share still borrowed), recent evidence, synthetic vs real. Hindsight scores are kept separate.", "Built"],
+        ["<b>Time Machine Replay</b>", "Every outbreak replayed day by day as if new, hiding the future, to test all of the above.", "Built"],
+    ], [1.35 * inch, 4.25 * inch, 1.4 * inch]),
 
     Spacer(1, 4),
-    KeepTogether([P("3. One step in the life of OS", s_h), Spacer(1, 4), flow(),
-                  P("Each day (or week), new fob data arrives. OS re-runs the Kinship Vote, updates the Two-Part Recipe "
-                    "with the Handover Rule, scores it with the Fresh-Days Check, and decides on the Green Light. "
-                    "'Not yet' means wait for more data.", s_note)]),
+    KeepTogether([P("4. One step in the life of OS", s_h), Spacer(1, 4), flow(),
+                  P("Each day new fob data arrives. OS updates the Kinship Vote, applies the Lab-Label Fallback if needed, refits the "
+                    "Two-Part Recipe with the Handover Rule, and checks the Green Light. 'Not yet' means wait for more data.", s_note)]),
 
-    P("4. Example: the 5-groups question", s_h),
-    P("Suppose the Atlas holds groups A–E and fob arrives. OS never labels fob 'group B' by hand. Early on, the Kinship Vote "
-      "might be 30% B, 25% A, 20% Stranger and the rest spread out: OS is honestly unsure, so it borrows little. Later it "
-      "might be 80% B, because B's past members keep predicting fob's real data best. Inside B, the Fresh-Days Check decides "
-      "between the recipes that worked for B1, B2 and so on: they compete on fob's own newest data, and the best one wins."),
-
-    P("5. Why trust it? The Time Machine Replay", s_h),
-    P("We pretend each past entry is fob, hide everything after it, and replay it step by step. Both case studies use the same four checks:"),
-    B("<b>Right kin?</b> Did the Kinship Vote point to what, in hindsight, was most similar? Sanity checks: a flu season "
-      "should pick flu seasons; a viral-vector vaccine should lean on viral-vector vaccines."),
-    B("<b>Honest confidence?</b> When OS says '80% B', it should be right about 80% of the time."),
-    B("<b>Earlier and better?</b> OS must beat the baselines: real data alone in Case Study 1, and the standard safety "
-      "methods in Case Study 2. We report the <b>worst</b> case, not just the average."),
-    B("<b>Honest Green Light?</b> Whenever the light was green, OS really was ready (within 0.02 of the gold standard in "
-      "Case Study 1; a real signal, not a false alarm, in Case Study 2)."),
-
-    P("6. Case Study 1: early outbreak data (in progress)", s_h),
-    P("Data: Brazil's national surveillance of hospitalised severe respiratory illness (SIVEP-Gripe), Ministry of Health, "
-      "CC-BY, 2009–2022. Task: predict in-hospital death from what is known at admission."),
+    P("5. What we learned (Time Machine Replays)", s_h),
     table([
-        ["Finding so far", "Number"],
-        ["Real data alone: plateau day for COVID-19 (2020)", "day 33 (2,824 patients)"],
-        ["Real data alone: plateau day for H1N1 (2009)", "day 56 (7,315 patients)"],
-        ["Days with too little data to train at all", "COVID days 0–20, H1N1 days 0–26"],
-        ["Model trained only on pre-2020 outbreaks, scored on COVID", "AUC 0.727, but age alone also gives 0.727"],
-        ["Death rate: past outbreaks vs COVID", "11.5% vs 33.6%"],
-    ], [4.6 * inch, 2.4 * inch]),
+        ["Question", "Answer from the data"],
+        ["How long does real data alone take?", "COVID-19 Brazil 2020: about 33 days to come within 0.02 AUC of the best possible. "
+         "H1N1 2009: 56 days. In the first 3 weeks there is too little data to train at all."],
+        ["Does the Kinship Vote find the right group?", "Right group in 86% of 23 Brazil outbreaks in week 1 and 95% from week 4. "
+         "When it is 95% sure, it is right 99% of the time."],
+        ["Does the Stranger Flag catch a new disease?", "COVID-19 flagged in week 3–4 in Brazil (749 patients) and week 4 in "
+         "Mexico (1,262). It needs several hundred patients: it never fires in outbreaks under 200 patients."],
+        ["Does borrowing help?", "Familiar flu and other-virus seasons: at the plateau from day 0, while real data alone usually "
+         "could not even train a model in 90 days. COVID-19 Brazil: plateau on day 28 instead of 34."],
+        ["Is it safe for a new disease?", "Without the Lab-Label Fallback, OS was worse than 'rank by age' in COVID's first 3 weeks. "
+         "With it, never worse in Brazil. In Mexico it was below age-only for 34 of 90 days after the fallback ended, as was real data alone."],
+        ["Is the Green Light honest?", "Brazil: 22 of 23 outbreaks turned green within 90 days, 0 false (COVID-19 on day 44). Mexico: "
+         "honest in both years (days 48 and 18)."],
+        ["Is the synthetic data useful?", "Across 22 Brazil outbreaks a model trained on OS synthetic data scores AUC 0.795, against "
+         "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.723 → 0.805 when added. CTGAN on the same "
+         "records: 0.619, worse than real data in 22 of 22."],
+        ["Is it realistic?", "Synthetic patients match the real ones within about 0.4 points of death rate. With the Dependency Chain, "
+         "links between symptoms and conditions are as close to later patients as the real data's own drift."],
+    ], [2.0 * inch, 5.0 * inch]),
     Spacer(1, 4),
-    P("This is why OS is designed this way. Borrowing everything from the past taught OS only 'older patients die more'. "
-      "And copying the past's death rate would have shown a third of COVID's real deaths. So the Kinship Vote chooses whom "
-      "to borrow from, and the Handover Rule never borrows the overall rate."),
+    P("<b>The key lesson:</b> synthetic data from OS carries OS's understanding, no more and no less. It helps exactly when "
+      "real data are scarce and borrowed knowledge is good. The Green Light decides when that is the case."),
 
-    P("7. Case Study 2: vaccine side-effect signals (planned)", s_h),
-    P("<b>Question:</b> when a new vaccine is rolled out, can OS confirm a real side-effect signal earlier than standard "
-      "methods, with no more false alarms, and point to the groups at risk so they can be protected (e.g. offered a "
-      "different vaccine or dose schedule)?"),
-    P("<b>Replay cases</b> (signals later confirmed as real; detection dates to be verified from primary sources):"),
-    B("Myocarditis in young men after mRNA COVID-19 vaccines."),
-    B("Rare blood clots with low platelets after viral-vector COVID-19 vaccines."),
-    B("Narcolepsy after the Pandemrix vaccine for 2009 H1N1."),
-    B("Bowel blockage (intussusception) in infants after the RotaShield rotavirus vaccine (1999)."),
-    P("<b>Data to check first</b> (download, licence, fields):"),
-    B("<b>VAERS (US)</b>: public and downloadable. Anyone can report, a report does not prove the vaccine caused the event, "
-      "and it has no dose counts, so dose counts must come from separate public figures."),
-    B("<b>Brazil's vaccine adverse-event reports</b>: possibly on the same Ministry of Health portal as Case Study 1. Not yet checked."),
-    B("Richer but restricted, needing an application: WHO VigiBase, the US Vaccine Safety Datalink, and clinical-trial data."),
-    P("<b>Baselines to beat:</b> the standard safety-monitoring statistics, which compare how often an event is reported "
-      "for this vaccine against all others (including Bayesian versions that already borrow strength), and sequential tests "
-      "of observed against expected cases. Beating these, not just 'no model', is the bar."),
-    P("<b>Expected cases matter:</b> some people would develop myocarditis or blood clots anyway. A signal means more cases "
-      "than expected for that age and sex, so OS must use background rates."),
+    P("6. What did not work (kept in the record)", s_h),
+    B("Borrowing from all past outbreaks equally: it learned only 'older patients die more' (no better than ranking by age)."),
+    B("Fresh-Days Check as a recipe switcher: it switched on a handful of patients and made early weeks worse. With a 100-death "
+      "minimum it equals plain borrowing."),
+    B("'Borrow only what relatives agree on' and 'borrow only the age pattern': both worse than plain borrowing."),
+    B("Outcome-based alarms for a new disease: there are almost no deaths in the first weeks, so they come too late."),
+    B("A misleading relative from the same group (H1N1 before the 2013 flu season) is still not caught early."),
 
-    P("8. Build order", s_h),
-    table([
-        ["Step", "What", "Done when"],
-        ["1", "Kinship Vote + Stranger Flag (Case Study 1)", "The Time Machine Replay over all 24 outbreaks picks sensible kin"],
-        ["2", "Two-Part Recipe + Handover Rule (Case Study 1)", "COVID 2020 replay reaches the plateau before day 33"],
-        ["3", "Fresh-Days Check + Green Light (Case Study 1)", "The Green Light is honest in every replay"],
-        ["4", "Data check for Case Study 2 (VAERS, Brazil)", "We know what is downloadable, its licence and its fields"],
-        ["5", "Vaccine Atlas + week-by-week replay of known signals", "We know when standard methods would have flagged each signal"],
-        ["6", "Run the same OS parts on Case Study 2", "OS flags real signals earlier with no more false alarms, or we report that it does not"],
-        ["7", "Synth Release + Glass Box Report (both)", "Synthetic data matches real data side by side and is labelled synthetic"],
-        ["8", "More outbreaks and vaccines (mpox, Ebola, SARS, MERS, other countries)", "OS is tested well beyond the first examples"],
-    ], [0.5 * inch, 3.0 * inch, 3.5 * inch]),
+    P("7. Open decisions", s_h),
+    B("<b>Equal start per group in the Kinship Vote.</b> Today each past outbreak starts equal, so groups with more members start "
+      "ahead (flu 43%, COVID 20% before any data). With an equal start per group, MERS moves to 66% COVID-like. Adopting it means "
+      "rerunning Steps 1–3."),
+    B("<b>When to leave the Lab-Label Fallback.</b> 20 deaths is a judgement call based on 3 new-pathogen outbreaks."),
+    B("<b>More truly new diseases.</b> The Atlas has about 4 distinct diseases and one new pathogen (COVID-19, in 2 countries). "
+      "Trust claims rest on that."),
+
+    P("8. Case Study 2: vaccine side-effect signals (planned, next)", s_h),
+    P("Same method, different fob: a new vaccine rollout, week by week. Question: can OS confirm real side-effect signals "
+      "earlier than standard safety statistics, with no more false alarms, and point to the groups at risk? Replay cases "
+      "(dates to verify): myocarditis after mRNA vaccines; blood clots after viral-vector vaccines; narcolepsy after Pandemrix; "
+      "intussusception after RotaShield. First step: check what public data can be downloaded (VAERS; Brazil's adverse-event "
+      "reports), its licence and fields."),
 
     P("9. Limits we say up front", s_h),
-    B("Synthetic rows hold no more information than fob's real data plus what OS learned from the past. Ten million rows "
-      "is a format, not new knowledge. The Stranger Flag and the Green Light keep OS honest about this."),
-    B("<b>Synthetic data cannot reveal a side effect nobody has reported yet.</b> Rare events (1 in 100,000 doses) are exactly "
-      "what generators wash out. In Case Study 2, OS's job is to catch real signals earlier and find who is at risk. Synthetic "
-      "data is a supporting tool (testing detection methods, planning monitoring), never a replacement for real safety evidence "
-      "or clinical trials."),
-    B("<b>Mislabelled synthetic data can do harm.</b> Synthetic side-effect data that looks real could be passed around as "
-      "evidence that vaccines are dangerous. Every synthetic file is clearly labelled, and nothing is fabricated or presented as real."),
-    B("A vaccine-safety report is not proof that the vaccine caused the event. OS's conclusions are signals for experts to "
-      "investigate, explained in the Glass Box Report, not verdicts."),
-    B("The Outbreak Atlas has 24 outbreaks but only about 4 truly different diseases, and confirmed vaccine signals are few. "
-      "That is the real sample size behind any claim of trust, which is why adding more cases is part of the plan."),
-    B("Some things make cases look alike for the wrong reasons: form changes (the 2019+ outbreak form leaves far more fields "
-      "blank), unusual first patients, changes in testing, and surges in reporting after media coverage. The Kinship Vote has "
-      "to correct for these, and the replays check that it did."),
+    B("Synthetic rows hold no more information than fob's real data plus what OS borrowed. Ten million rows is a format, not new knowledge."),
+    B("Synthetic data cannot reveal a side effect nobody has reported, and cannot replace clinical trials."),
+    B("Every synthetic file is labelled with its provenance; nothing is presented as real patients."),
+    B("The vote groups outbreaks by who gets sick and who dies, not by virus family (H7N9 influenza looks COVID-like). The lab label "
+      "stays a separate input."),
+    B("Replays use final, cleaned datasets. Mexico is ordered by admission date, which ignores reporting delay."),
 ]
 
 doc = SimpleDocTemplate("docs/outbreak-synth-plan.pdf", pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
-                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v2",
+                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v3",
                         author="outbreak-synth project")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print("wrote docs/outbreak-synth-plan.pdf")
