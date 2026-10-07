@@ -4,6 +4,50 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Literature positioning, and a validity issue found in the replays
+
+**Full note:** `docs/literature_positioning.md` (targeted search, not systematic; references to verify before citing).
+
+### Positioning
+- **Already known:**
+  - transfer from earlier diseases to COVID-19 outcomes (Lichtner et al. 2021; Agarwal et al. 2022, TRANSMED);
+  - Bayesian dynamic borrowing (power, commensurate and robust MAP priors; multi-source exchangeability models);
+  - meta-learning across clinical tasks (MetaPred);
+  - choosing a generator from dataset traits (SYNTHONY);
+  - synthetic augmentation of small health tables (Liu, El Emam et al. 2025).
+- **Not found in this search** (OS's possible contribution):
+  - a time-respecting replay benchmark over many real outbreaks;
+  - choosing which past outbreaks to borrow from, week by week, with a "none of the above" option;
+  - a readiness signal checked for honesty;
+  - synthetic data release gated by it, with an interpretable report.
+
+### Baselines reviewers will expect
+- pooled past model + fine-tuning;
+- robust MAP or commensurate prior, or multi-source exchangeability borrowing;
+- a MetaPred-style meta-learner;
+- TVAE, TabDDPM and a Bayesian network or ARF (via synthcity), plus bootstrap resampling;
+- Riley et al.'s minimum sample size as a readiness baseline.
+
+### Validity issue: the replays use outcomes before they were known
+Every replay (Exp. 2–12) used each patient's final outcome as soon as the record was entered. In a live system,
+patients still in hospital have no outcome yet. COVID-19 Brazil 2020, share of entered patients whose outcome date
+(`DT_EVOLUCA`) had passed:
+
+| Day | Patients used | Outcome known by then | Deaths used | Deaths known by then |
+|---:|---:|---:|---:|---:|
+| 21 | 88 | 22% | 35 | 10 |
+| 28 | 1,084 | 32% | 363 | 127 |
+| 44 | 9,333 | 59% | 2,822 | 1,645 |
+| 90 | 79,854 | 79% | 29,790 | 25,083 |
+
+- The real gap is larger: outcomes are typed in after they happen.
+- **Early-day results so far are therefore optimistic,** for every method compared (OS, real data alone, the Green
+  Light). Comparisons between methods may hold up better than absolute numbers, but this must be re-tested.
+- **Fix before any paper:** use an outcome only after the date it became known (outcome or closure date). Leave out
+  or explicitly model patients without an outcome yet.
+
+---
+
 ## 2026-10-07 — Case Study 2 data check: vaccine adverse-event reports
 
 ### VAERS (United States)
