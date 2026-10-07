@@ -47,7 +47,7 @@ def main(cfg_path):
     cfg = tomllib.loads(Path(cfg_path).read_text())
     lib = pd.read_parquet(LIB)
     info = json.loads(Path("results", f"{cfg['os_run']}.json").read_text())["outbreaks"]
-    paths = final_paths(cfg["os_run"])
+    paths = final_paths(cfg["os_run"], m=cfg.get("green_m", 20), s=cfg.get("green_s", 0.98))
     for sub in ("os", "ctgan", "inputs"):
         (OUTDIR / sub).mkdir(parents=True, exist_ok=True)
     results, manifest = {}, []
@@ -59,7 +59,8 @@ def main(cfg_path):
                                            "kinship_run": cfg.get("kinship_run", OS_CFG["kinship_run"]),
                                            "kinship_analysis": cfg.get("kinship_analysis"),
                                            "vote_prior": cfg.get("vote_prior", "outbreak"),
-                                           "outcome_timing": cfg.get("outcome_timing", "entry")})
+                                           "outcome_timing": cfg.get("outcome_timing", "entry"),
+                                           "green_m": cfg.get("green_m", 20), "green_s": cfg.get("green_s", 0.98)})
         lo, hi = info[fob]["info"]["test_days"]
         dd = (s.later.DT_DIGITA - s.t0).dt.days
         test = s.later[(dd >= lo) & (dd <= hi)]

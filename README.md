@@ -39,7 +39,7 @@ python3 -m venv .venv-ctgan && .venv-ctgan/bin/pip install --index-url https://d
   && .venv-ctgan/bin/pip install -r requirements-ctgan.txt          # isolated env for the CTGAN baseline
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp09_synth_release.toml   # ~45 min
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10_synth_chain.toml   # dependency-chain generator
-PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 44   # Glass Box reports -> reports/
+PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 54   # Glass Box reports -> reports/
 # Out-of-country test (Mexico COVID-19 2020/2021)
 ./scripts/download_mexico.sh && (cd data/raw/mexico && mkdir -p extracted && cd extracted && unzip -o ../COVID19MEXICO2020.zip && unzip -o ../COVID19MEXICO2021.zip && unzip -o ../diccionario_datos_abiertos.zip)
 PYTHONPATH=src python -m outbreak_synth.library --intl                     # -> data/processed/library_intl.parquet

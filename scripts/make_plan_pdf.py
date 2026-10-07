@@ -80,14 +80,14 @@ def footer(c, doc):
     c.saveState()
     c.setFont("Sans", 7.5)
     c.setFillColor(MUTED)
-    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v3.1 · 2026-10-07")
+    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v3.2 · 2026-10-07")
     c.drawRightString(7.75 * inch, 0.5 * inch, f"Page {doc.page}")
     c.restoreState()
 
 
 story = [
     P("Outbreak Synth (OS)", s_title),
-    P("Plan v3.1: what has been built and learned (Case Study 1, early outbreaks), and what comes next. "
+    P("Plan v3.2: what has been built and learned (Case Study 1, early outbreaks), and what comes next. "
       "OS studies past outbreaks, follows a new one day by day, says when it understands it, and only then "
       "releases synthetic patient data.", s_sub),
 
@@ -126,13 +126,14 @@ story = [
          "A minimum restraint pulls towards 'no effect' (not towards relatives) so rare groups stay sensible.", "Built, tuned on Brazil"],
         ["<b>Fresh-Days Check</b>", "Scores recipes on fob's newest unseen patients. As a recipe switcher it did not help "
          "(see section 5); kept as evidence in the Glass Box Report.", "Built; no gain"],
-        ["<b>Green Light</b>", "At least 20 deaths, and OS's risk ranking of fob's patients stable (rank correlation of 0.98 or more vs 8 days "
+        ["<b>Green Light</b>", "At least 10 deaths with a known outcome, and OS's risk ranking of fob's patients stable (rank correlation of 0.99 or more vs 8 days "
          "earlier) on two checks in a row, and not on the fallback.", "Built, tested"],
         ["<b>Synth Release</b>", "After the Green Light: synthetic patients from the Two-Part Recipe. Symptoms and conditions come "
          "from a <b>Dependency Chain</b> (each given age band, sex and the fields before it). Every row is labelled synthetic with provenance.", "Built, tested"],
         ["<b>Glass Box Report</b>", "An HTML page per outbreak and day: Green Light conditions, Kinship Vote, risk table (odds "
          "ratios, relatives' values, share still borrowed), recent evidence, synthetic vs real. Hindsight scores are kept separate.", "Built"],
-        ["<b>Time Machine Replay</b>", "Every outbreak replayed day by day as if new, hiding the future, to test all of the above.", "Built"],
+        ["<b>Time Machine Replay</b>", "Every outbreak replayed day by day as if new, hiding the future, to test all of the above. "
+         "A patient's outcome is used only from the day it was recorded (v3.2).", "Built"],
     ], [1.35 * inch, 4.25 * inch, 1.4 * inch]),
 
     Spacer(1, 4),
@@ -145,16 +146,18 @@ story = [
         ["Question", "Answer from the data"],
         ["How long does real data alone take?", "COVID-19 Brazil 2020: about 33 days to come within 0.02 AUC of the best possible. "
          "H1N1 2009: 56 days. In the first 3 weeks there is too little data to train at all."],
-        ["Does the Kinship Vote find the right group?", "Right group in 86% of 23 Brazil outbreaks in week 1, 90% in weeks 2–4 and 95% "
-         "from week 8. When it is 95% sure, it is right 97% of the time."],
-        ["Does the Stranger Flag catch a new disease?", "COVID-19 flagged in week 3–4 in Brazil (749 patients) and week 4 in "
+        ["Does the Kinship Vote find the right group?", "Right group in 90% of 23 Brazil outbreaks in weeks 1–4 and 95% "
+         "from week 8. When it is 95% sure, it is right 98% of the time."],
+        ["Does the Stranger Flag catch a new disease?", "COVID-19 flagged in week 4 in Brazil (3,538 patients) and week 4 in "
          "Mexico (1,262). It needs several hundred patients: it never fires in outbreaks under 200 patients."],
         ["Does borrowing help?", "Familiar flu and other-virus seasons: at the plateau from day 0, while real data alone usually "
-         "could not even train a model in 90 days. COVID-19 Brazil: plateau on day 28 instead of 34."],
+         "could not even train a model in 90 days. COVID-19 Brazil: no gain once outcomes count only when known "
+         "(plateau day 36 for both OS and real data alone; it looked like 28 vs 34 before this fix)."],
         ["Is it safe for a new disease?", "Without the Lab-Label Fallback, OS was worse than 'rank by age' in COVID's first 3 weeks. "
          "With it, never worse in Brazil's new-pathogen outbreaks. In Mexico it was below age-only for 34 of 90 days after the fallback ended, "
          "as was real data alone."],
-        ["Is the Green Light honest?", "Brazil: 22 of 23 outbreaks turned green within 90 days, 0 false (COVID-19 on day 44). Mexico: "
+        ["Is the Green Light honest?", "Brazil, outcomes counted only when known: the old rule (20 deaths, 0.98) gave 2 false greens, so it was "
+         "re-chosen leave-one-outbreak-out: 22 of 23 green, 1 false, median day 37; fixed at (10, 0.99): COVID-19 green on day 54. Mexico (old timing): "
          "honest in both years (days 48 and 18)."],
         ["Is the synthetic data useful?", "Across 22 Brazil outbreaks a model trained on OS synthetic data scores AUC 0.795, against "
          "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.723 → 0.805 when added. CTGAN on the same "
@@ -195,11 +198,13 @@ story = [
     B("Every synthetic file is labelled with its provenance; nothing is presented as real patients."),
     B("The vote groups outbreaks by who gets sick and who dies, not by virus family (H7N9 influenza looks COVID-like). The lab label "
       "stays a separate input."),
-    B("Replays use final, cleaned datasets. Mexico is ordered by admission date, which ignores reporting delay."),
+    B("Replays use final, cleaned datasets. Brazil outcomes count from the date they were recorded; Mexico has no outcome date "
+      "for survivors, so its replays still use outcomes from admission (optimistic). Mexico is ordered by admission date, which "
+      "ignores reporting delay."),
 ]
 
 doc = SimpleDocTemplate("docs/outbreak-synth-plan.pdf", pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
-                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v3.1",
+                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v3.2",
                         author="outbreak-synth project")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print("wrote docs/outbreak-synth-plan.pdf")

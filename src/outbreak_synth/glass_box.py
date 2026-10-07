@@ -12,6 +12,8 @@ from sklearn.metrics import roc_auc_score
 
 from .library import OUT as LIB, TARGET, YESNO
 from .os_core import FINAL_CFG, build_state, risk
+
+GM, GS = FINAL_CFG.get("green_m", 20), FINAL_CFG.get("green_s", 0.98)
 from .recipe import design, fit_map
 from .synth import band, generate_chain, LO, HI
 
@@ -78,9 +80,9 @@ def report(fob, day=None, lib=None):
            f"hospitalised patients; {len(rec):,} of them have a known outcome so far, with {int(y.sum()):,} deaths ({y.mean():.1%}). "
            f"Outbreak Synth (OS) v1.</p>",
            f"<div class='card'>{status}<br>"]
-    reasons = [f"deaths so far: {int(y.sum())} (needs at least 20) {'✓' if y.sum() >= 20 else '✗'}",
-               f"stability of the risk ranking vs 8 days earlier: {row.stability:.3f} (needs at least 0.98 on two checks in a row) "
-               f"{'✓' if pd.notna(row.stability) and row.stability >= 0.98 else '✗'}" if pd.notna(row.stability) else
+    reasons = [f"deaths with a known outcome so far: {int(y.sum())} (needs at least {GM}) {'✓' if y.sum() >= GM else '✗'}",
+               f"stability of the risk ranking vs 8 days earlier: {row.stability:.3f} (needs at least {GS} on two checks in a row) "
+               f"{'✓' if pd.notna(row.stability) and row.stability >= GS else '✗'}" if pd.notna(row.stability) else
                "stability: not yet measurable (needs 8 days of history)",
                f"recipe in use: {'age-trend fallback (OS does not yet trust what it borrowed)' if s.recipe == 'age_trend' else 'borrow from voted relatives'} "
                f"{'✗' if s.recipe == 'age_trend' else '✓'}"]

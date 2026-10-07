@@ -34,7 +34,8 @@ FINAL_CFG_ENTRY_TIMING = {**CFG, "os_run": "exp08c_os_replay_groupprior", "kinsh
                           "vote_prior": "group"}
 # Adopted 2026-10-07 (Exp. 14): outcomes usable only once known (DT_KNOWN). Replaces the entry-timing settings above.
 FINAL_CFG = {**CFG, "os_run": "exp08d_os_replay_known", "kinship_run": "exp05d_kinship_known",
-             "kinship_analysis": "exp05d_kinship_known", "vote_prior": "group", "outcome_timing": "known"}
+             "kinship_analysis": "exp05d_kinship_known", "vote_prior": "group", "outcome_timing": "known",
+             "green_m": 10, "green_s": 0.99}  # Green Light re-chosen leave-one-outbreak-out on Exp. 8d
 from .library import family as fam
 
 
@@ -77,7 +78,7 @@ def _laplace(M, y, c0, c, lam):
 def build_state(fob, day=None, cfg=CFG, lib=None):
     """OS state for `fob` on `day` (default: its Green Light day)."""
     lib = pd.read_parquet(LIB) if lib is None else lib
-    paths = final_paths(cfg["os_run"], E=cfg["fallback_deaths"])
+    paths = final_paths(cfg["os_run"], E=cfg["fallback_deaths"], m=cfg.get("green_m", 20), s=cfg.get("green_s", 0.98))
     path, gday, new_group = paths[fob]
     day = gday if day is None else day
     if day is None:
