@@ -7,7 +7,7 @@ Green Light day in Exp. 10d (outcomes only once known), scored the same way as O
   bayesian_network, a Bayesian network and adversarial random forests
   arf
 Model-based generators train on at most train_max_rows of the real records (subsample, seed fixed), like CTGAN in
-Exp. 9. Each outbreak is written to the results file as soon as it finishes; a rerun skips finished ones.
+Exp. 9. Results are saved after every generator; a rerun skips finished (outbreak, generator) pairs.
 Usage: PYTHONPATH=src python -m outbreak_synth.run_synth_baselines experiments/exp16_synth_baselines.toml"""
 import json
 import subprocess
@@ -38,7 +38,8 @@ def main(cfg_path):
     for sub in ("baselines", "inputs"):
         (OUTDIR / sub).mkdir(parents=True, exist_ok=True)
     for fob, (_, gday, _) in sorted(paths.items()):
-        if gday is None or fob in results or (cfg.get("only") and fob not in cfg["only"]):
+        todo = [g for g in cfg["generators"] if g not in results.get(fob, {}).get("logs", {})]
+        if gday is None or not todo or (cfg.get("only") and fob not in cfg["only"]):
             continue
         s = build_state(fob, lib=lib, cfg={**OS_CFG, "os_run": cfg["os_run"], "kinship_run": cfg["kinship_run"],
                                            "kinship_analysis": cfg["kinship_analysis"], "vote_prior": cfg["vote_prior"],
@@ -59,9 +60,10 @@ def main(cfg_path):
         train = inp.sample(cfg["train_max_rows"], random_state=cfg["seed"]) if len(inp) > cfg["train_max_rows"] else inp
         p_in = OUTDIR / "inputs" / f"{fob}_day{gday}_known.parquet"
         train.to_parquet(p_in, index=False)
-        r = {"green_day": gday, "early_n": len(early), "train_n": len(train), "test_n": len(test),
-             "auc": {"gold": info[fob]["info"]["gold_auc"], "real_early": ridge_auc(early, test)}, "fidelity": {}, "logs": {}}
-        for g in cfg["generators"]:
+        r = results.get(fob) or {"green_day": gday, "early_n": len(early), "train_n": len(train), "test_n": len(test),
+                                 "auc": {"gold": info[fob]["info"]["gold_auc"], "real_early": ridge_auc(early, test)},
+                                 "fidelity": {}, "logs": {}}
+        for g in todo:
             out = OUTDIR / "baselines" / f"SYNTHETIC_{g}_{fob}_day{gday}.parquet"
             if g == "bootstrap":
                 syn = inp.sample(cfg["n_rows"], replace=True, random_state=cfg["seed"]).reset_index(drop=True)
@@ -86,10 +88,10 @@ def main(cfg_path):
             r["fidelity"][g] = {"vs_early": compare(early, syn), "vs_later": compare(test, syn)}
             r["auc"][f"{g}_synth_only"] = ridge_auc(syn, test)
             r["auc"][f"real_plus_{g}"] = ridge_auc(pd.concat([early, syn[early.columns.intersection(syn.columns)]]), test)
+            results[fob] = r  # saved after every generator, so a rerun resumes
+            rpath.write_text(json.dumps({"config": cfg, "outbreaks": results}, indent=2, default=str))
+            mpath.write_text(json.dumps(manifest, indent=2))
             print(f"{fob} day {gday} {g}: synth-only {r['auc'][f'{g}_synth_only']:.3f} real+ {r['auc'][f'real_plus_{g}']:.3f} | {log}", flush=True)
-        results[fob] = r
-        rpath.write_text(json.dumps({"config": cfg, "outbreaks": results}, indent=2, default=str))
-        mpath.write_text(json.dumps(manifest, indent=2))
 
 
 if __name__ == "__main__":

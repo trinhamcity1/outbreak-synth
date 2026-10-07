@@ -25,7 +25,7 @@ num["death"] = num["death"].astype(int)
 num["age"] = num["age"].astype(float)
 t = time.time()
 m = Plugins().get(plugin, random_state=seed, **kw)
-m.fit(GenericDataLoader(num, target_column="death"))
+m.fit(GenericDataLoader(num))  # unconditional, like CTGAN: death is an ordinary column
 out = m.generate(count=n, random_state=seed).dataframe()
 for c in cats:
     out[c] = [codes[c][int(np.clip(round(v), 0, len(codes[c]) - 1))] for v in out[c]]
