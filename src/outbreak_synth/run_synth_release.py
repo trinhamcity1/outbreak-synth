@@ -56,7 +56,9 @@ def main(cfg_path):
         if gday is None or (only and fob not in only):
             continue
         s = build_state(fob, lib=lib, cfg={**OS_CFG, "os_run": cfg["os_run"],
-                                           "kinship_run": cfg.get("kinship_run", OS_CFG["kinship_run"])})
+                                           "kinship_run": cfg.get("kinship_run", OS_CFG["kinship_run"]),
+                                           "kinship_analysis": cfg.get("kinship_analysis"),
+                                           "vote_prior": cfg.get("vote_prior", "outbreak")})
         lo, hi = info[fob]["info"]["test_days"]
         dd = (s.later.DT_DIGITA - s.t0).dt.days
         test = s.later[(dd >= lo) & (dd <= hi)]

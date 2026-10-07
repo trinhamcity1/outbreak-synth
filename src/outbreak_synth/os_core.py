@@ -28,6 +28,10 @@ CFG = {"lam0": 10.0, "day0_mode": "threshold", "season_threshold": 20, "max_fit_
        # COVID 2020), which ranking tolerates but a generator does not. 1.0 = the real-only ridge strength.
        "lam_floor": 1.0,
        "vote_prior": "outbreak", "kinship_analysis": None}
+# OS as currently adopted (2026-10-07): Kinship Vote starts equal per pathogen group (Exp. 5c / 8c). CFG above
+# keeps the settings behind Exp. 9, 10 and 12 so they still reproduce.
+FINAL_CFG = {**CFG, "os_run": "exp08c_os_replay_groupprior", "kinship_analysis": "exp05c_kinship_groupprior",
+             "vote_prior": "group"}
 from .library import family as fam
 
 

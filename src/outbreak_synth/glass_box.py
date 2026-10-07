@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 
 from .library import OUT as LIB, TARGET, YESNO
-from .os_core import build_state, risk
+from .os_core import FINAL_CFG, build_state, risk
 from .recipe import design, fit_map
 from .synth import band, generate_chain, LO, HI
 
@@ -63,7 +63,7 @@ def table(df, num_cols=()):
 
 def report(fob, day=None, lib=None):
     lib = pd.read_parquet(LIB) if lib is None else lib
-    s = build_state(fob, day, lib=lib)
+    s = build_state(fob, day, cfg=FINAL_CFG, lib=lib)
     rec, y = s.records, s.records[TARGET].to_numpy()
     date = (s.t0 + pd.Timedelta(days=s.day)).date()
     p = s.path.set_index("day")
@@ -154,7 +154,7 @@ def report(fob, day=None, lib=None):
                 "which keeps links such as shortness of breath with low oxygen (Exp. 10).</p>"]
 
     # Replay check (hindsight)
-    info = __import__("json").loads(Path("results/exp08_os_replay.json").read_text())["outbreaks"][fob]["info"]
+    info = __import__("json").loads(Path("results", f"{FINAL_CFG['os_run']}.json").read_text())["outbreaks"][fob]["info"]
     lo, hi = info["test_days"]
     dd = (s.later.DT_DIGITA - s.t0).dt.days
     test = s.later[(dd >= lo) & (dd <= hi)]
