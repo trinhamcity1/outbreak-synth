@@ -160,8 +160,17 @@ story = [
          "re-chosen leave-one-outbreak-out: 22 of 23 green, 1 false, median day 37; fixed at (10, 0.99): COVID-19 green on day 54. Mexico (old timing): "
          "honest in both years (days 48 and 18)."],
         ["Is the synthetic data useful?", "Across 22 Brazil outbreaks (outcomes counted only when known) a model trained on OS synthetic data scores AUC 0.796, against "
-         "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.718 → 0.804 when added. CTGAN on the same "
-         "records: 0.619, worse than real data in 22 of 22."],
+         "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.718 → 0.804 when added."],
+        ["Does it beat standard borrowing? (Exp. 15)", "Lowest gap to the best possible model of 9 baselines (pooled past, "
+         "stacking, fine-tuning, meta-analytic and robust priors, empirical Bayes, source averaging, a MetaPred-style meta-learner, "
+         "equal-weight kin). But against fine-tuning or stacking the margin is small and not statistically clear; the Kinship Vote "
+         "adds a small, consistent gain over equal weights. The main safety gain is the Lab-Label Fallback: without it every "
+         "baseline falls below 'rank by age' for COVID's first weeks."],
+        ["Do sample-size rules do the Green Light's job?", "No. Riley's minimum sample size needs 2,100–7,100 patients with a known "
+         "outcome and turns on in only 5 of 23 outbreaks; it never does in flu or other-virus seasons, where OS is good from day 0."],
+        ["Does it beat standard generators? (Exp. 16)", "On the same records and day: OS synthetic 0.796 AUC; ARF 0.770, TVAE 0.704, "
+         "bootstrap 0.679, Bayesian network 0.676, CTGAN 0.613. The gain comes from borrowed knowledge, so it shrinks where fob's own "
+         "data are plentiful (COVID, flu 2022)."],
         ["Is it realistic?", "Synthetic patients match the real ones within about 0.4 points of death rate. With the Dependency Chain, "
          "links between symptoms and conditions are as close to later patients as the real data's own drift."],
     ], [2.0 * inch, 5.0 * inch]),

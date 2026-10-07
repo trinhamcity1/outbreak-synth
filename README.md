@@ -46,6 +46,11 @@ PYTHONPATH=src python -m outbreak_synth.run_os_replay2 experiments/exp08d_os_rep
 PYTHONPATH=src python -m outbreak_synth.analyse_os2 exp08d_os_replay_known
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10d_synth_known.toml   # ~2 h
 PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 54   # Glass Box reports -> reports/
+# Baselines (Exp. 15 steps 2-3 and readiness; Exp. 16 synthetic data generators)
+PYTHONPATH=src python -m outbreak_synth.run_baselines experiments/exp15_baselines.toml   # ~1.5 h on 4 CPUs
+PYTHONPATH=src python -m outbreak_synth.analyse_baselines exp15_baselines exp08d_os_replay_known
+python3 -m venv .venv-synthcity && .venv-synthcity/bin/pip install -r requirements-synthcity.txt   # isolated env
+PYTHONPATH=src python -m outbreak_synth.run_synth_baselines experiments/exp16_synth_baselines.toml   # ~4 h, resumable
 # Out-of-country test (Mexico COVID-19 2020/2021)
 ./scripts/download_mexico.sh && (cd data/raw/mexico && mkdir -p extracted && cd extracted && unzip -o ../COVID19MEXICO2020.zip && unzip -o ../COVID19MEXICO2021.zip && unzip -o ../diccionario_datos_abiertos.zip)
 PYTHONPATH=src python -m outbreak_synth.library --intl                     # -> data/processed/library_intl.parquet

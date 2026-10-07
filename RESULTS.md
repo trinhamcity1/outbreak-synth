@@ -2,6 +2,61 @@
 
 Running log of what was run, on which data, and what came out. Newest entry first.
 
+## 2026-10-07 — Exp. 16: baselines for step 4 (synthetic data generators)
+
+**What was run:** `run_synth_baselines.py` with `experiments/exp16_synth_baselines.toml` →
+`results/exp16_synth_baselines.json`, `_manifest.json` (SHA-256 of every synthetic file) and `_summary.csv`.
+- Same 22 outbreaks, Green Light days and real records as OS in Exp. 10d (outcomes only once known, Green Light
+  10 deaths / 0.99).
+- 50,000 rows per generator, seed 0.
+- Model-based generators train on at most 10,000 of the real records; only the 3 COVID outbreaks are larger.
+
+**Generators:**
+- bootstrap resampling of the real records;
+- Bayesian network, ARF and TVAE (300 epochs), via synthcity 0.2.12 in `.venv-synthcity`
+  (`requirements-synthcity.txt`; opacus pinned to 1.5.2 so it imports with torch 2.2.2);
+- CTGAN (300 epochs, `.venv-ctgan`).
+- All are unconditional fits on age, sex, race, state, the 16 yes/no fields and death.
+- Columns with a single value are left out of the synthcity fit and added back unchanged (they crashed the
+  Bayesian network).
+- **TabDDPM was not run:** on this 4-CPU machine a 1,000-step fit on 2,000 rows did not finish within an hour, and
+  a 100-step test produced 0.3% deaths against 28% real.
+
+**Scoring** is as in Exp. 10:
+- a ridge model trained on each synthetic set, AUC on the later real test window;
+- 95% paired bootstrap intervals over outbreaks (2,000 resamples, seed 0).
+
+| Trained on | Mean AUC (22) | Outbreaks < 1,000 records (15) | OS minus it [95% CI] | OS better in | Link gap vs later real | Worst death-rate gap vs real records |
+|---|---:|---:|---:|---:|---:|---:|
+| **OS synthetic** | **0.796** | **0.804** | — | — | **0.032** | 0.020 |
+| real records OS had | 0.730 | 0.718 | +0.066 [0.044, 0.086] | 21 | — | — |
+| ARF | 0.770 | 0.768 | +0.026 [0.013, 0.042] | 17 | 0.042 | 0.009 |
+| TVAE | 0.704 | 0.683 | +0.092 [0.060, 0.130] | 22 | 0.050 | 0.120 |
+| bootstrap | 0.679 | 0.653 | +0.118 [0.082, 0.154] | 21 | 0.057 | 0.005 |
+| Bayesian network | 0.676 | 0.663 | +0.120 [0.089, 0.153] | 22 | 0.071 | 0.237 |
+| CTGAN | 0.613 | 0.585 | +0.183 [0.141, 0.222] | 22 | 0.057 | 0.233 |
+
+- Link gap = mean absolute difference in correlations between the yes/no fields, age and death, against the
+  later real patients.
+- Adding synthetic rows to the real records, in outbreaks under 1,000 records: OS 0.718 → 0.804. ARF 0.768,
+  TVAE 0.698, CTGAN 0.608, Bayesian network 0.664, bootstrap 0.653.
+
+- **Plain reading:**
+  - OS's synthetic data is the most useful in this comparison, and its links between fields are closest to later
+    patients.
+  - **The comparison is not like for like, and that is the point:** the other generators see only fob's own
+    records, while OS's synthetic data also carries what it borrowed from earlier outbreaks. They show what a
+    standard generator gives at the same moment, not a better generator for the same information.
+  - **Where fob's own records are plentiful (COVID, flu 2022), the gap is small.** OS beats bootstrap by
+    0.001–0.008, and in flu 2022 bootstrap (0.772) and ARF (0.774) beat OS (0.767).
+  - **Bootstrap scores below the real records it copies.** 50,000 copies of a few hundred patients make the
+    fixed ridge penalty relatively weak, so the model overfits. The same protocol applies to every generator,
+    OS included, and is kept as in Exp. 9/10.
+  - ARF is the strongest standard generator. CTGAN and the Bayesian network distort the death rate in small
+    outbreaks (gaps up to 0.23).
+
+---
+
 ## 2026-10-07 — Exp. 15: baselines for steps 2–3 and for the Green Light
 
 **What was run:** `run_baselines.py` with `experiments/exp15_baselines.toml` → `results/exp15_baselines.json`.
