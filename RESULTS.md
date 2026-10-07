@@ -2,6 +2,60 @@
 
 Running log of what was run, on which data, and what came out. Newest entry first.
 
+## 2026-10-07 — Exp. 14: outcomes used only once known (Exp. 5d, 8d, 10d)
+
+**Fix for the validity issue below.**
+- New library columns: `DT_KNOWN` = later of entry and outcome date (`DT_EVOLUCA` / `DT_OBITO`), falling back to the
+  closure date (`DT_ENCERRA`); `DT_KNOWN_CLOSE` = later of entry and closure date.
+- `outcome_timing = "known"`: on day t a patient's outcome is used only if `DT_KNOWN` is on or before t. Patients
+  without a known outcome still count for the profile (who is hospitalised) and for the stability check; past
+  outbreaks in the Atlas use only outcomes known before fob's day 0.
+- `outcome_timing = "entry"` (the default) reproduces every earlier output exactly (checked under the same parallel
+  workers). Library rebuilt; the old columns are identical (2,142,720 rows).
+- **Not covered:** Mexico has no outcome date for survivors, so Exp. 11/12 stay on entry timing (optimistic). A
+  closure-date sensitivity run (`outcome_timing = "closure"`) has not been run yet.
+
+**Runs** (Brazil library, same seeds and settings as Exp. 5c/8c/10c, `vote_prior = "group"`):
+- `exp05d_kinship_known` (step 1, Kinship Vote);
+- `exp08d_os_replay_known` (steps 2–3);
+- `exp10d_synth_known` (step 4, dependency chain, 50,000 rows, seed 0) on the re-chosen Green Light days below.
+- `os_core.FINAL_CFG` now uses these runs; Glass Box reports regenerated (COVID 2020 days 14 and 54, flu 2016 day 32).
+
+### Results
+| | Entry timing (8c/10c) | Known timing (8d/10d) |
+|---|---:|---:|
+| Step 1: right group, week 1 / 2 / 4 / 8+ | 86% / 90% / 90% / 95% | 90% / 90% / 90% / 95% |
+| Step 1: right when 95% or more sure | 97.4% | 97.6% |
+| Stranger over half, COVID 2020 | week 3–4 (749 patients) | week 4 (3,538 patients) |
+| Steps 2–3: mean gap to gold, days 0–90 (label fallback, 20 deaths) | 0.0039 | 0.0053 |
+| Steps 2–3: days below age only | 50 | 66 (flu 2021: 30) |
+| COVID 2020: plateau OS / real data alone | 28 / 34 | **36 / 36** |
+| COVID 2020: OS AUC on day 28 | 0.753 | 0.728 |
+| Familiar flu and other-virus seasons: plateau | day 0 | day 0 (unchanged) |
+| Green Light, old rule (20 deaths, 0.98): greens / false | 22 / 0 | 23 / **2** (flu 2013 day 54, other virus 2017 day 52) |
+| Green Light, rule re-chosen leave-one-outbreak-out: greens / false / median day | 22 / 0 / 40 | 22 / 1 / 37 (other virus 2017 under 10, 0.98) |
+| Green Light fixed at (10 deaths, 0.99), in-sample: greens / false / median day | — | 22 / 0 / 38 |
+| COVID 2020 green day | 44 | 54 |
+| Step 4: OS synthetic-only AUC (22 outbreaks) | 0.7942 | 0.7960 |
+| Step 4: real records OS had (known outcomes in 10d) | 0.7305 | 0.7303 |
+| Step 4: synthetic-only beats real records OS had | 20 / 22 | 21 / 22 |
+| Step 4: outbreaks < 1,000 records, real → real + OS synthetic | 16: 0.723 → 0.804 | 15: 0.718 → 0.804 |
+| Step 4: largest synthetic vs real death rate gap (early records) | 0.014 | 0.020 |
+
+- **Plain reading:**
+  - Part of the early COVID result came from outcomes that were not known yet. With realistic timing, OS reaches the
+    plateau no earlier than real data alone for COVID 2020; its COVID advantage is gone.
+  - The advantage on familiar seasons holds: OS is at the plateau from day 0.
+  - The old Green Light settings gave 2 false greens, so the settings were re-chosen. Each outbreak's setting is
+    chosen on the other 22. Under that held-out check, 1 false green remains (other virus 2017).
+  - The adopted (10, 0.99) is clean only on the data it was chosen on. The final untouched test must confirm it.
+  - Step 4 numbers barely move; they are scored on later patients against the real records OS had, which now hold
+    only known outcomes.
+- **Settings now adopted** (`FINAL_CFG`): Exp. 5d / 8d, group start, known timing, Green Light at 10 deaths with a
+  known outcome and stability 0.99.
+
+---
+
 ---
 
 ## 2026-10-07 — Literature positioning, and a validity issue found in the replays

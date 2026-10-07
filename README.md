@@ -39,6 +39,12 @@ python3 -m venv .venv-ctgan && .venv-ctgan/bin/pip install --index-url https://d
   && .venv-ctgan/bin/pip install -r requirements-ctgan.txt          # isolated env for the CTGAN baseline
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp09_synth_release.toml   # ~45 min
 PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10_synth_chain.toml   # dependency-chain generator
+# Adopted settings: outcomes used only once known (Exp. 14)
+PYTHONPATH=src python -m outbreak_synth.run_kinship_replay experiments/exp05d_kinship_known.toml
+PYTHONPATH=src python -m outbreak_synth.analyse_kinship exp05d_kinship_known --prior group
+PYTHONPATH=src python -m outbreak_synth.run_os_replay2 experiments/exp08d_os_replay_known.toml
+PYTHONPATH=src python -m outbreak_synth.analyse_os2 exp08d_os_replay_known
+PYTHONPATH=src python -m outbreak_synth.run_synth_release experiments/exp10d_synth_known.toml   # ~2 h
 PYTHONPATH=src python -m outbreak_synth.glass_box covid_2020 14 54   # Glass Box reports -> reports/
 # Out-of-country test (Mexico COVID-19 2020/2021)
 ./scripts/download_mexico.sh && (cd data/raw/mexico && mkdir -p extracted && cd extracted && unzip -o ../COVID19MEXICO2020.zip && unzip -o ../COVID19MEXICO2021.zip && unzip -o ../diccionario_datos_abiertos.zip)

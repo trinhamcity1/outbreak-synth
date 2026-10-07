@@ -159,8 +159,8 @@ story = [
         ["Is the Green Light honest?", "Brazil, outcomes counted only when known: the old rule (20 deaths, 0.98) gave 2 false greens, so it was "
          "re-chosen leave-one-outbreak-out: 22 of 23 green, 1 false, median day 37; fixed at (10, 0.99): COVID-19 green on day 54. Mexico (old timing): "
          "honest in both years (days 48 and 18)."],
-        ["Is the synthetic data useful?", "Across 22 Brazil outbreaks a model trained on OS synthetic data scores AUC 0.795, against "
-         "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.723 → 0.805 when added. CTGAN on the same "
+        ["Is the synthetic data useful?", "Across 22 Brazil outbreaks (outcomes counted only when known) a model trained on OS synthetic data scores AUC 0.796, against "
+         "0.730 for the real records OS had. For outbreaks with under 1,000 real records: 0.718 → 0.804 when added. CTGAN on the same "
          "records: 0.619, worse than real data in 22 of 22."],
         ["Is it realistic?", "Synthetic patients match the real ones within about 0.4 points of death rate. With the Dependency Chain, "
          "links between symptoms and conditions are as close to later patients as the real data's own drift."],
