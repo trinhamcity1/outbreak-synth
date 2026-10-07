@@ -4,6 +4,44 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Case Study 2 data check: vaccine adverse-event reports
+
+### VAERS (United States)
+- The yearly CSV files are public, but every download sits behind a **CAPTCHA** (`vaers.hhs.gov/eSubDownload`), so
+  they cannot be fetched automatically. That will not be worked around.
+- Options: the owner downloads the files by hand and adds them, or we use CDC WONDER's aggregate queries.
+
+### Brazil ESAVI: usable (`scripts/download_esavi.sh`)
+- **Source:** Ministério da Saúde (CGFAM/DPNI), dataset `esavi` on dadosabertos.saude.gov.br, **CC-BY**.
+- **File:** a live snapshot; this download was last modified 2026-10-05; SHA-256 in `data/raw/esavi/SHA256SUMS`.
+- **Size:** 396,980 notifications, one row each; 396,620 with a notification date from 2021 on. The few earlier
+  dates are entry errors; the system effectively starts with the 2021 COVID-19 rollout.
+- **Fields (73):** age, sex, state, pregnancy; vaccine(s), manufacturer, dose, lot, vaccination date; reaction text
+  and code (MedDRA, version mostly "not defined"); onset date; seriousness (e.g. hospitalisation, death); outcome;
+  causality assessment; notification and closure dates. The file is UTF-8.
+- **Reports by vaccine (2021+):** AstraZeneca/Covishield 101,193; Pfizer 69,137; CoronaVac 56,672; Janssen 8,777;
+  plus dengue, influenza and routine childhood vaccines.
+
+### Known signals visible in the raw reports (simple text match on the reaction field)
+| Signal | Reports | With the expected vaccine | Profile | Timing (expected vaccine) |
+|---|---:|---:|---|---|
+| Myocarditis / pericarditis | 125 | 95 Pfizer | **74% male, median age 30** | 2 in 2021 Q2, 10 in Q3, **47 in Q4**, 15 in 2022 Q1 |
+| Thrombosis with thrombocytopenia | 64 | 45 AstraZeneca / Covishield | 56% female, median age 40 | 1 in 2021 Q1, 10 in Q2, **20 in Q3**, 3 in Q4 |
+| Intussusception | 11 | 9 including rotavirus vaccine | – | – |
+| Narcolepsy (Pandemrix, 2009) | 0 | – | – | outside this dataset's years |
+
+**Verdict:** Case Study 2 is **feasible on Brazil's ESAVI data** for the COVID-19 signals.
+
+**Caveats:**
+- **Counts are small** (tens to about 100 reports per signal).
+- **No dose counts** in this file. Standard disproportionality methods (PRR, ROR, BCPNN, MGPS) need only report
+  counts. Observed-vs-expected methods need doses, which would come from Brazil's vaccination open data.
+- **Reports are spontaneous:** they do not prove the vaccine caused the event. Reporting also rises after media
+  coverage, and both signals were already known worldwide when most Brazilian reports arrived.
+- **The reaction field is partly free text,** so the event definitions need care and a clinical check.
+
+---
+
 ## 2026-10-07 — Adopted: Kinship Vote starts equal per pathogen group (Exp. 5c, 8c, 10c, 13 re-analysed)
 
 **Change:** `kinship.start_shares(kin, "group")`.
