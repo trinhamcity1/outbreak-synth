@@ -2,6 +2,101 @@
 
 Running log of what was run, on which data, and what came out. Newest entry first.
 
+## 2026-10-07 — Exp. 15: baselines for steps 2–3 and for the Green Light
+
+**What was run:** `run_baselines.py` with `experiments/exp15_baselines.toml` → `results/exp15_baselines.json`.
+- Same replay as Exp. 8d: Brazil library, 23 outbreaks, same day 0, test windows and 2-day grid. Outcomes are used
+  only once known.
+- Analysis: `analyse_baselines.py exp15_baselines exp08d_os_replay_known` → `results/exp15_baselines_analysis.json`
+  and `_summary.csv`.
+
+**How the baselines were set up:**
+- Every method is the same logistic regression design.
+- Each uses only earlier outbreaks (records and outcomes known before fob's day 0).
+- Each uses OS's borrowing strength of 10 where it needs one.
+- **No baseline was tuned further. OS's settings were chosen on these same outbreaks (Exp. 6b, 8),** so this
+  comparison favours OS somewhat. The frozen final test must settle it.
+
+| Baseline | What it is |
+|---|---|
+| pooled | one model on the pooled earlier outbreaks; no fob data |
+| stacked | pooled earlier outbreaks + fob's records in one fit, with a fob indicator |
+| finetune | MAP towards the pooled model (L2 fine-tuning) |
+| kin_equal | OS's Handover Rule with all earlier outbreaks weighted equally (= OS without the Kinship Vote) |
+| map | meta-analytic prior (mean and between-outbreak variance of each coefficient) |
+| rmap | robust meta-analytic prior: 0.8 map + 0.2 vague, weights updated by marginal likelihood (Schmidli et al. 2014) |
+| eb | commensurate-style: borrowing strength chosen by marginal likelihood on fob's data |
+| bma | one component per earlier outbreak + a no-borrowing component, weighted by marginal likelihood on fob's deaths (a simplification of multi-source exchangeability models) |
+| meta_init | MetaPred-style: Reptile meta-learned starting point, then fine-tuning towards it |
+
+### Results: who dies (23 outbreaks, days 0–90)
+- Gap = gold AUC minus the method's AUC, averaged over days. Lower is better.
+- "Gap vs OS" = the method's gap minus OS's, with a 95% paired bootstrap interval over outbreaks (2,000
+  resamples, seed 0). Above 0 means OS is better.
+
+| Method | Mean gap | Gap vs OS [95% CI] | OS better in | Days below age only |
+|---|---:|---:|---:|---:|
+| **OS** (Kinship Vote + Handover + label fallback) | **0.0052** | — | — | **66** |
+| real data alone | 0.0520 | +0.047 [0.028, 0.065] | 19 | 644 |
+| pooled | 0.0210 | +0.016 [0.003, 0.032] | 13 | 552 |
+| stacked | 0.0101 | +0.005 [−0.002, 0.013] | 11 | 306 |
+| finetune | 0.0085 | +0.003 [−0.001, 0.008] | 13 | 184 |
+| kin_equal | 0.0087 | +0.004 [0.001, 0.006] | 18 | 222 |
+| map | 0.0140 | +0.009 [0.004, 0.016] | 20 | 278 |
+| rmap | 0.0166 | +0.011 [0.006, 0.019] | 21 | 296 |
+| eb | 0.0146 | +0.009 [0.005, 0.014] | 20 | 332 |
+| bma | 0.0081 | +0.003 [0.001, 0.005] | 16 | 138 |
+| meta_init | 0.0124 | +0.007 [0.005, 0.010] | 20 | 276 |
+
+With OS's Lab-Label Fallback added to each baseline (isolates the borrowing itself):
+
+| Method + fallback | Mean gap | Gap vs OS [95% CI] | OS better in | Days below age only |
+|---|---:|---:|---:|---:|
+| stacked | 0.0083 | +0.003 [−0.002, 0.009] | 11 | 230 |
+| finetune | 0.0072 | +0.002 [−0.001, 0.005] | 13 | 114 |
+| kin_equal | 0.0081 | +0.003 [0.001, 0.005] | 17 | 166 |
+| bma | 0.0070 | +0.002 [0.000, 0.003] | 15 | 82 |
+| map / rmap / eb / meta_init | 0.011 / 0.013 / 0.014 / 0.012 | all above 0 | 18–20 | 220–284 |
+
+- **Plain reading:**
+  - Borrowing from earlier outbreaks in any form is far better than real data alone.
+  - OS has the lowest mean gap and the fewest days below "rank by age".
+  - Against the two simplest baselines, the margin is small and not statistically clear. These are stacking fob
+    with the pooled past, and fine-tuning towards the pooled model. Their intervals include 0, and OS is better in
+    only 11–13 of 23 outbreaks.
+  - The Kinship Vote's own contribution (OS vs kin_equal) is small but consistent: +0.003, interval above 0,
+    17–18 of 23 outbreaks.
+  - Weighting sources by how well they explain fob's deaths (bma) comes closest. OS's vote also uses who gets
+    sick, which arrives before deaths.
+  - **The Lab-Label Fallback matters more than the vote** in the new-pathogen outbreaks. Without it, every
+    borrowing baseline is below "rank by age" for 24–30 of COVID 2020's first 90 days (stacked 58, pooled 92);
+    OS: 0 days.
+  - The meta-analytic priors (map, rmap) borrow too firmly where earlier outbreaks agree. In other virus 2013
+    they start at AUC 0.42.
+- **What this means for the claim:** OS's gain over a good simple baseline is modest in accuracy. The stronger
+  parts are safety (no days below age only in the new-pathogen outbreaks) and the readiness signal (below).
+
+### Results: readiness rules (Exp. 8d rows; a ready day is false if the model is > 0.02 below gold)
+| Rule | Outbreaks ready by day 90 | Median day | False, scoring OS's model | False, scoring real data alone |
+|---|---:|---:|---:|---:|
+| Green Light (10 deaths, 0.99), adopted | 22 | 38 | 0 (in-sample) | 17 (incl. 1 where real data could not train) |
+| Green Light (20, 0.98), old | 23 | 46 | 2 | 18 |
+| Riley et al. minimum sample size | 5 | 24 | 0 | 2 (COVID 2020 day 38, COVID 2021 day 14) |
+| 10 events per predictor | 5 | 32 | 1 | 1 |
+
+- **Riley settings:**
+  - P = 56 predictor parameters; shrinkage 0.9; Nagelkerke optimism 0.05; overall risk within 0.05.
+  - Anticipated R² = Nagelkerke R² of the pooled past model (0.21–0.30), rescaled to fob's current death share.
+  - Riley requires 2,100–7,100 patients with a known outcome. 18 of 23 outbreaks never reach that in 90 days.
+- **Plain reading:**
+  - Sample-size rules are built for models fitted on fob's own data. They are mostly too strict here: they never
+    turn on in flu and other-virus seasons, where OS is good from day 0.
+  - When they do turn on, real data alone is still not always ready (2 of 5).
+  - The Green Light is a readiness signal for a model that borrows. That is a different question, which these
+    rules do not answer.
+
+---
+
 ## 2026-10-07 — Exp. 14: outcomes used only once known (Exp. 5d, 8d, 10d)
 
 **Fix for the validity issue below.**
