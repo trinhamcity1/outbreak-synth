@@ -103,6 +103,16 @@ def nagelkerke(X, y, b0, b):
 
 
 def run_one(fob, cfg, kin_list):
+    part = Path("results", f"{cfg['name']}_parts", f"{fob}.json")  # finished outbreaks are kept, so a rerun resumes
+    if part.exists():
+        return fob, json.loads(part.read_text())
+    res = _run_one(fob, cfg, kin_list)
+    part.parent.mkdir(exist_ok=True)
+    part.write_text(json.dumps(res))
+    return fob, res
+
+
+def _run_one(fob, cfg, kin_list):
     lib = pd.read_parquet(LIB)
     timing = cfg["outcome_timing"]
     d = lib[lib.outbreak == fob]
@@ -116,7 +126,7 @@ def run_one(fob, cfg, kin_list):
     y = d[TARGET].to_numpy()
     test = (day >= lo) & (day <= hi)
     if test.sum() < cfg["min_test"] or y[test].sum() < cfg["min_test_deaths"]:
-        return fob, None
+        return None
     yt, lam0, p = y[test], cfg["lam0"], X.shape[1]
     borrow = np.array([m[2] for m in meta])
 
@@ -188,13 +198,15 @@ def run_one(fob, cfg, kin_list):
         rows.append(row)
     info = {"day0": str(t0.date()), "test_days": [lo, hi], "kin": kin_list, "P": p, "pooled_r2_nagelkerke": r2n,
             "pooled_n": int(len(yp)), "pooled_death_rate": float(yp.mean())}
-    return fob, {"info": info, "days": rows}
+    print(fob, "done", flush=True)
+    return {"info": info, "days": rows}
 
 
 def main(cfg_path):
     cfg = tomllib.loads(Path(cfg_path).read_text())
     meta5 = json.loads(Path("results", f"{cfg['kinship_run']}.json").read_text())
     jobs = [(f, list(m["kin"])) for f, m in meta5.items() if not cfg.get("only") or f in cfg["only"]]
+    jobs.sort(key=lambda j: (not j[0].startswith("covid"), j[0]))  # biggest outbreaks first
     from outbreak_synth.run_baselines import run_one as job  # by reference: workers cannot unpickle __main__'s ufuncs
     res = Parallel(n_jobs=cfg["n_jobs"])(delayed(job)(f, cfg, kin) for f, kin in jobs)
     out = {f: r for f, r in res if r is not None}

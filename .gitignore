@@ -5,3 +5,4 @@ __pycache__/
 results/**/*.parquet
 .venv-ctgan/
 .venv-synthcity/
+results/*_parts/
