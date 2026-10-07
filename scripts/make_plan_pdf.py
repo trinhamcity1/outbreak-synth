@@ -80,14 +80,14 @@ def footer(c, doc):
     c.saveState()
     c.setFont("Sans", 7.5)
     c.setFillColor(MUTED)
-    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v3 · 2026-10-07")
+    c.drawString(0.75 * inch, 0.5 * inch, "Outbreak Synth (OS) · plan v3.1 · 2026-10-07")
     c.drawRightString(7.75 * inch, 0.5 * inch, f"Page {doc.page}")
     c.restoreState()
 
 
 story = [
     P("Outbreak Synth (OS)", s_title),
-    P("Plan v3: what has been built and learned (Case Study 1, early outbreaks), and what comes next. "
+    P("Plan v3.1: what has been built and learned (Case Study 1, early outbreaks), and what comes next. "
       "OS studies past outbreaks, follows a new one day by day, says when it understands it, and only then "
       "releases synthetic patient data.", s_sub),
 
@@ -115,7 +115,8 @@ story = [
         ["<b>Outbreak Atlas</b>", "Past outbreaks mapped to shared fields (age, sex, race, state, 6 symptoms, 10 conditions). "
          "Fields a form never collected are 'missing'.", "Built (Brazil + Mexico)"],
         ["<b>Kinship Vote</b>", "Each past outbreak predicts fob's new patients each week (patient mix + who dies, with fob's own "
-         "death rate). Better predictions earn more votes. It compares only fields fob's form collects.", "Built, tested"],
+         "death rate). Better predictions earn more votes. It compares only fields fob's form collects, and each pathogen "
+         "group starts with an equal share of the vote.", "Built, tested"],
         ["<b>Stranger Flag</b>", "A 'none of the above' candidate learning from fob alone. Winning early means fob is new.", "Built, tested"],
         ["<b>Lab-Label Fallback</b>", "New: if the lab says fob's pathogen group has no earlier member in the Atlas, OS uses an "
          "age-trend model until 20 deaths have been scored, then borrows.", "Built, tested"],
@@ -144,14 +145,15 @@ story = [
         ["Question", "Answer from the data"],
         ["How long does real data alone take?", "COVID-19 Brazil 2020: about 33 days to come within 0.02 AUC of the best possible. "
          "H1N1 2009: 56 days. In the first 3 weeks there is too little data to train at all."],
-        ["Does the Kinship Vote find the right group?", "Right group in 86% of 23 Brazil outbreaks in week 1 and 95% from week 4. "
-         "When it is 95% sure, it is right 99% of the time."],
+        ["Does the Kinship Vote find the right group?", "Right group in 86% of 23 Brazil outbreaks in week 1, 90% in weeks 2–4 and 95% "
+         "from week 8. When it is 95% sure, it is right 97% of the time."],
         ["Does the Stranger Flag catch a new disease?", "COVID-19 flagged in week 3–4 in Brazil (749 patients) and week 4 in "
          "Mexico (1,262). It needs several hundred patients: it never fires in outbreaks under 200 patients."],
         ["Does borrowing help?", "Familiar flu and other-virus seasons: at the plateau from day 0, while real data alone usually "
          "could not even train a model in 90 days. COVID-19 Brazil: plateau on day 28 instead of 34."],
         ["Is it safe for a new disease?", "Without the Lab-Label Fallback, OS was worse than 'rank by age' in COVID's first 3 weeks. "
-         "With it, never worse in Brazil. In Mexico it was below age-only for 34 of 90 days after the fallback ended, as was real data alone."],
+         "With it, never worse in Brazil's new-pathogen outbreaks. In Mexico it was below age-only for 34 of 90 days after the fallback ended, "
+         "as was real data alone."],
         ["Is the Green Light honest?", "Brazil: 22 of 23 outbreaks turned green within 90 days, 0 false (COVID-19 on day 44). Mexico: "
          "honest in both years (days 48 and 18)."],
         ["Is the synthetic data useful?", "Across 22 Brazil outbreaks a model trained on OS synthetic data scores AUC 0.795, against "
@@ -173,9 +175,9 @@ story = [
     B("A misleading relative from the same group (H1N1 before the 2013 flu season) is still not caught early."),
 
     P("7. Open decisions", s_h),
-    B("<b>Equal start per group in the Kinship Vote.</b> Today each past outbreak starts equal, so groups with more members start "
-      "ahead (flu 43%, COVID 20% before any data). With an equal start per group, MERS moves to 66% COVID-like. Adopting it means "
-      "rerunning Steps 1–3."),
+    B("<b>Decided (2026-10-07): equal start per group in the Kinship Vote.</b> Before, groups with more past outbreaks started ahead "
+      "(flu 43%, COVID 20% before any data). With an equal start per group, Brazil results are the same or slightly better (days below "
+      "'rank by age' 64 → 50), and MERS leans 66% COVID-like instead of 47%."),
     B("<b>When to leave the Lab-Label Fallback.</b> 20 deaths is a judgement call based on 3 new-pathogen outbreaks."),
     B("<b>More truly new diseases.</b> The Atlas has about 4 distinct diseases and one new pathogen (COVID-19, in 2 countries). "
       "Trust claims rest on that."),
@@ -197,7 +199,7 @@ story = [
 ]
 
 doc = SimpleDocTemplate("docs/outbreak-synth-plan.pdf", pagesize=letter, leftMargin=0.75 * inch, rightMargin=0.75 * inch,
-                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v3",
+                        topMargin=0.7 * inch, bottomMargin=0.8 * inch, title="Outbreak Synth (OS): plan v3.1",
                         author="outbreak-synth project")
 doc.build(story, onFirstPage=footer, onLaterPages=footer)
 print("wrote docs/outbreak-synth-plan.pdf")

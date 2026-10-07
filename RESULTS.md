@@ -4,6 +4,48 @@ Running log of what was run, on which data, and what came out. Newest entry firs
 
 ---
 
+## 2026-10-07 — Adopted: Kinship Vote starts equal per pathogen group (Exp. 5c, 8c, 10c, 13 re-analysed)
+
+**Change:** `kinship.start_shares(kin, "group")`.
+- Each pathogen group (flu incl. H1N1 / other virus / COVID) gets an equal starting share of the vote, split
+  equally among its members.
+- The Stranger keeps its old starting share of 1/(K+1), so only fairness between groups changes.
+- Before, every past outbreak started equal, so bigger groups started ahead.
+- The old rule stays available as the default `"outbreak"` and reproduces every earlier output. Re-running the
+  Exp. 5b analysis with it gave differences only in the 16th–17th significant digit; the committed files were kept.
+
+**Runs (same weekly scores, Exp. 5b; only the starting shares change):**
+- `exp05c_kinship_groupprior` (step 1 analysis; vote sharpness re-chosen leave-one-outbreak-out: 0.01 or 0.03);
+- `exp08c_os_replay_groupprior` (steps 2–3, about 40 minutes);
+- `exp10c_synth_chain_groupprior` (step 4, dependency-chain generator);
+- small-outbreak votes re-analysed (`results/exp13*_votes_groupprior.csv`).
+- `os_core.FINAL_CFG` holds the adopted settings; the Glass Box reports were regenerated with them.
+
+### Results
+| | Equal per outbreak (before) | Equal per group (adopted) |
+|---|---:|---:|
+| Step 1: right group, week 1 / 2 / 4 / 8+ | 86% / 81% / 95% / 95% | 86% / **90%** / 90% / 95% |
+| Step 1: right when 95% or more sure | 99.3% | 97.4% |
+| Steps 2–3: mean gap to gold, days 0–90 | 0.0040 | **0.0039** |
+| Steps 2–3: days below age only (23 outbreaks × 90 days) | 64 | **50** |
+| Green Light: greens / false / median day | 22 / 0 / 40 | 22 / 0 / 40 |
+| COVID 2020: plateau / green day | 28 / 44 | 28 / 44 |
+| Step 4: OS synthetic-only AUC (22 outbreaks) | 0.7945 | 0.7942 |
+| Step 4: real + OS synthetic, outbreaks < 1,000 records | 0.805 | 0.804 |
+| Step 4: worst link gap vs later real | 0.154 | 0.154 |
+| Small outbreaks, present-day Atlas: MERS | flu 48%, COVID 47% | **COVID 66%**, flu 31% |
+| Small outbreaks, present-day Atlas: H7N9 | flu 52%, COVID 28% | COVID 46%, flu 38% |
+| Small outbreaks, present-day Atlas: Ebola | flu 57%, COVID 27% | COVID 44%, flu 42% |
+
+- The fewer days below age come from flu 2021 (24 → 16) and other virus 2015 (14 → 8).
+- **Plain reading:** in Brazil, where flu and other-virus groups are about the same size, the change is small and
+  slightly positive, with nothing made worse. It matters when groups are uneven: in today's Atlas MERS now leans
+  clearly COVID-like.
+- **Not rerun:** the Mexico replays (Exp. 11/12) still use the old start. Mexico 2021's only COVID relatives already
+  hold 100% of the vote, and Mexico 2020 has no COVID relatives, so their outcome should not change.
+
+---
+
 ## 2026-10-07 — Vote-only test on small line lists: Ebola, H7N9, MERS (Exp. 13, 13b)
 
 ### Data (`scripts/download_small.sh`, SHA-256 recorded; `library.py --small` → `data/processed/library_small.parquet`)
