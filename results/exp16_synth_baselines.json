@@ -41,7 +41,11 @@
         "bayesian_network_synth_only": 0.7262867563323875,
         "real_plus_bayesian_network": 0.7431734378091911,
         "arf_synth_only": 0.7469368357922649,
-        "real_plus_arf": 0.7496620149146375
+        "real_plus_arf": 0.7496620149146375,
+        "ctgan_synth_only": 0.7381563671345107,
+        "real_plus_ctgan": 0.7474557008113584,
+        "tvae_synth_only": 0.7436318407782033,
+        "real_plus_tvae": 0.7440641450757692
       },
       "fidelity": {
         "bootstrap": {
@@ -121,12 +125,196 @@
             "corr_mean_abs_diff": 0.019298542676519113,
             "corr_max_abs_diff": 0.12511574332240305
           }
+        },
+        "ctgan": {
+          "vs_early": {
+            "age_mean_diff": 2.2712754794277146,
+            "age_ks": 0.09238072314971874,
+            "age_band_tvd": 0.09732259619676813,
+            "death_rate_diff": 0.13516657262744403,
+            "death_by_band_max_diff": 0.18570997386645763,
+            "yes_rate_mean_abs_diff": 0.054857804102312294,
+            "yes_rate_max_abs_diff": 0.12077183644317474,
+            "yes_rate_worst_field": "SATURACAO",
+            "corr_mean_abs_diff": 0.03253322610360911,
+            "corr_max_abs_diff": 0.12965336526948093
+          },
+          "vs_later": {
+            "age_mean_diff": 5.3988385702117725,
+            "age_ks": 0.16073102428812508,
+            "age_band_tvd": 0.14771078332941703,
+            "death_rate_diff": 0.12912537414820674,
+            "death_by_band_max_diff": 0.21306812623844773,
+            "yes_rate_mean_abs_diff": 0.07795172609638348,
+            "yes_rate_max_abs_diff": 0.15645976416807306,
+            "yes_rate_worst_field": "TOSSE",
+            "corr_mean_abs_diff": 0.03850173412999651,
+            "corr_max_abs_diff": 0.15287142934161496
+          }
+        },
+        "tvae": {
+          "vs_early": {
+            "age_mean_diff": -0.20755360856856697,
+            "age_ks": 0.07279952504240694,
+            "age_band_tvd": 0.078148243906794,
+            "death_rate_diff": -0.00997342737255602,
+            "death_by_band_max_diff": 0.08063200872576126,
+            "yes_rate_mean_abs_diff": 0.019728191567717168,
+            "yes_rate_max_abs_diff": 0.04060990625836977,
+            "yes_rate_worst_field": "GARGANTA",
+            "corr_mean_abs_diff": 0.02536721643526088,
+            "corr_max_abs_diff": 0.09862663317948028
+          },
+          "vs_later": {
+            "age_mean_diff": 2.920009482215491,
+            "age_ks": 0.13789616644949054,
+            "age_band_tvd": 0.12072169354666437,
+            "death_rate_diff": -0.016014625851793307,
+            "death_by_band_max_diff": 0.03552071411974267,
+            "yes_rate_mean_abs_diff": 0.04834855149744729,
+            "yes_rate_max_abs_diff": 0.21321848589067138,
+            "yes_rate_worst_field": "FEBRE",
+            "corr_mean_abs_diff": 0.025761155472393674,
+            "corr_max_abs_diff": 0.1518560038559933
+          }
         }
       },
       "logs": {
         "bootstrap": "resampled",
         "bayesian_network": "bayesian_network rows=10000 kwargs={} seconds=14",
-        "arf": "arf rows=10000 kwargs={} seconds=230"
+        "arf": "arf rows=10000 kwargs={} seconds=230",
+        "ctgan": "ctgan rows=10000 epochs=300 seconds=3436",
+        "tvae": "tvae rows=10000 kwargs={'n_iter': 300} seconds=1439"
+      }
+    },
+    "covid_2021": {
+      "green_day": 28,
+      "early_n": 25045,
+      "train_n": 10000,
+      "test_n": 507241,
+      "auc": {
+        "gold": 0.7162769107963312,
+        "real_early": 0.7051740778474627,
+        "bootstrap_synth_only": 0.7043923917047072,
+        "real_plus_bootstrap": 0.7045446332455685,
+        "bayesian_network_synth_only": 0.6735001405344445,
+        "real_plus_bayesian_network": 0.6960955972179971,
+        "arf_synth_only": 0.6955990104056085,
+        "real_plus_arf": 0.7031669587217907,
+        "ctgan_synth_only": 0.6454500526770222,
+        "real_plus_ctgan": 0.681540013857009
+      },
+      "fidelity": {
+        "bootstrap": {
+          "vs_early": {
+            "age_mean_diff": 0.018229413905075376,
+            "age_ks": 0.0033048872030345677,
+            "age_band_tvd": 0.004517464563785205,
+            "death_rate_diff": 0.0007313196246755971,
+            "death_by_band_max_diff": 0.003703896030695597,
+            "yes_rate_mean_abs_diff": 0.0010060111798762266,
+            "yes_rate_max_abs_diff": 0.002913136354561807,
+            "yes_rate_worst_field": "DISPNEIA",
+            "corr_mean_abs_diff": 0.0034203120835261283,
+            "corr_max_abs_diff": 0.01569314799996241
+          },
+          "vs_later": {
+            "age_mean_diff": -6.038677064760648,
+            "age_ks": 0.1897579541480282,
+            "age_band_tvd": 0.19902645590557547,
+            "death_rate_diff": -0.020007980782310586,
+            "death_by_band_max_diff": 0.10505914930969262,
+            "yes_rate_mean_abs_diff": 0.02584639234111596,
+            "yes_rate_max_abs_diff": 0.07600778596367408,
+            "yes_rate_worst_field": "CARDIOPATI",
+            "corr_mean_abs_diff": 0.01425040353229013,
+            "corr_max_abs_diff": 0.09976999547716028
+          }
+        },
+        "bayesian_network": {
+          "vs_early": {
+            "age_mean_diff": 0.12846866788257927,
+            "age_ks": 0.017087234977041343,
+            "age_band_tvd": 0.010145454182471564,
+            "death_rate_diff": 0.1488713196246756,
+            "death_by_band_max_diff": 0.17661304097334113,
+            "yes_rate_mean_abs_diff": 0.011635829756438417,
+            "yes_rate_max_abs_diff": 0.06695655819524854,
+            "yes_rate_worst_field": "CARDIOPATI",
+            "corr_mean_abs_diff": 0.038309460737952036,
+            "corr_max_abs_diff": 0.23795402750733072
+          },
+          "vs_later": {
+            "age_mean_diff": -5.928437810783144,
+            "age_ks": 0.19530888733363427,
+            "age_band_tvd": 0.2052664559055755,
+            "death_rate_diff": 0.1281320192176894,
+            "death_by_band_max_diff": 0.12487270061112088,
+            "yes_rate_mean_abs_diff": 0.03442884585187317,
+            "yes_rate_max_abs_diff": 0.14164778596367406,
+            "yes_rate_worst_field": "CARDIOPATI",
+            "corr_mean_abs_diff": 0.034931634463913605,
+            "corr_max_abs_diff": 0.2593062921424104
+          }
+        },
+        "arf": {
+          "vs_early": {
+            "age_mean_diff": 0.13125985019688358,
+            "age_ks": 0.021142455579956088,
+            "age_band_tvd": 0.02840726292673187,
+            "death_rate_diff": 0.001291319624675602,
+            "death_by_band_max_diff": 0.04388878825283815,
+            "yes_rate_mean_abs_diff": 0.0033787816929526813,
+            "yes_rate_max_abs_diff": 0.012618195248552566,
+            "yes_rate_worst_field": "SATURACAO",
+            "corr_mean_abs_diff": 0.010035656671983464,
+            "corr_max_abs_diff": 0.04421292134717425
+          },
+          "vs_later": {
+            "age_mean_diff": -5.92564662846884,
+            "age_ks": 0.19133396034626537,
+            "age_band_tvd": 0.19547013226454488,
+            "death_rate_diff": -0.01944798078231058,
+            "death_by_band_max_diff": 0.10814979767940669,
+            "yes_rate_mean_abs_diff": 0.02387759585187318,
+            "yes_rate_max_abs_diff": 0.06752778596367409,
+            "yes_rate_worst_field": "CARDIOPATI",
+            "corr_mean_abs_diff": 0.014879887458686385,
+            "corr_max_abs_diff": 0.08230179121332978
+          }
+        },
+        "ctgan": {
+          "vs_early": {
+            "age_mean_diff": -5.184042126120566,
+            "age_ks": 0.12959238570572973,
+            "age_band_tvd": 0.13650545418247154,
+            "death_rate_diff": 0.23309131962467555,
+            "death_by_band_max_diff": 0.22535810978401022,
+            "yes_rate_mean_abs_diff": 0.03431848273108405,
+            "yes_rate_max_abs_diff": 0.10646246755839495,
+            "yes_rate_worst_field": "FEBRE",
+            "corr_mean_abs_diff": 0.03095673194529884,
+            "corr_max_abs_diff": 0.19625850430203887
+          },
+          "vs_later": {
+            "age_mean_diff": -11.24094860478629,
+            "age_ks": 0.29350304399683785,
+            "age_band_tvd": 0.3020264559055755,
+            "death_rate_diff": 0.21235201921768937,
+            "death_by_band_max_diff": 0.15467210543925938,
+            "yes_rate_mean_abs_diff": 0.040671021442470146,
+            "yes_rate_max_abs_diff": 0.13306880654363507,
+            "yes_rate_worst_field": "FEBRE",
+            "corr_mean_abs_diff": 0.035509373661443036,
+            "corr_max_abs_diff": 0.2032135964142057
+          }
+        }
+      },
+      "logs": {
+        "bootstrap": "resampled",
+        "bayesian_network": "bayesian_network rows=10000 kwargs={} seconds=13",
+        "arf": "arf rows=10000 kwargs={} seconds=252",
+        "ctgan": "ctgan rows=10000 epochs=300 seconds=381"
       }
     }
   }

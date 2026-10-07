@@ -16,5 +16,41 @@
     "rows": 50000,
     "sha256": "c31b445e2e91657729d13be01c3dc828a03cd840040d69c0f73ba4e0769faff4",
     "provenance": "SYNTHETIC - arf baseline; outbreak=covid_2020; trained on 10000 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_ctgan_covid_2020_day54.parquet",
+    "rows": 50000,
+    "sha256": "2dc55ec800f8fc31f28bea678e60c3b3ad471aa1aac947a2a41530668792467c",
+    "provenance": "SYNTHETIC - ctgan baseline; outbreak=covid_2020; trained on 10000 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_tvae_covid_2020_day54.parquet",
+    "rows": 50000,
+    "sha256": "29e7b9486032291ead9ab51d9063b739ca02e3a862f7e5d2ae45ed5e336fab17",
+    "provenance": "SYNTHETIC - tvae baseline; outbreak=covid_2020; trained on 10000 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bootstrap_covid_2021_day28.parquet",
+    "rows": 50000,
+    "sha256": "192c7c6ccae471f77c48208ef0c8c190e07cff5d97df8c31a4b16a72b9bc5596",
+    "provenance": "SYNTHETIC - bootstrap baseline; outbreak=covid_2021; trained on 25045 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bayesian_network_covid_2021_day28.parquet",
+    "rows": 50000,
+    "sha256": "ea9de0a79187dcf8709e891f0a5079967e652448ba85c5732dc7a666fb3cc7f7",
+    "provenance": "SYNTHETIC - bayesian_network baseline; outbreak=covid_2021; trained on 10000 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_arf_covid_2021_day28.parquet",
+    "rows": 50000,
+    "sha256": "e3c6b1752de59f55d9665dc108adbfe1f6a48104d5179e119d7bc763b308e450",
+    "provenance": "SYNTHETIC - arf baseline; outbreak=covid_2021; trained on 10000 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_ctgan_covid_2021_day28.parquet",
+    "rows": 50000,
+    "sha256": "ae5dc67bb36765398fe6a8de5ac01828e4954faf9e4687cb19ca453973ce7ad8",
+    "provenance": "SYNTHETIC - ctgan baseline; outbreak=covid_2021; trained on 10000 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
   }
 ]
