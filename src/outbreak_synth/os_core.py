@@ -26,7 +26,8 @@ CFG = {"lam0": 10.0, "day0_mode": "threshold", "season_threshold": 20, "max_fit_
        # Minimum shrinkage even when the Stranger has the whole vote (lam0 * (1 - 1) = 0). Without it, rare
        # age bands and near-collinear columns get unbounded coefficients (e.g. -18.9, SE 4,597 for ages 1-4 in
        # COVID 2020), which ranking tolerates but a generator does not. 1.0 = the real-only ridge strength.
-       "lam_floor": 1.0}
+       "lam_floor": 1.0,
+       "vote_prior": "outbreak", "kinship_analysis": None}
 from .library import family as fam
 
 
@@ -74,7 +75,7 @@ def build_state(fob, day=None, cfg=CFG, lib=None):
     if day is None:
         raise ValueError(f"{fob} never got a Green Light; pass a day explicitly")
     meta5 = json.loads(Path("results", f"{cfg['kinship_run']}.json").read_text())
-    ana = json.loads(Path("results", f"{cfg['kinship_run']}_analysis.json").read_text())
+    ana = json.loads(Path("results", f"{cfg.get('kinship_analysis') or cfg['kinship_run']}_analysis.json").read_text())
     weeks = pd.read_csv(Path("results", f"{cfg['kinship_run']}_weeks.csv"))
     kin_list = list(meta5[fob]["kin"])
     d = lib[lib.outbreak == fob]
@@ -97,7 +98,7 @@ def build_state(fob, day=None, cfg=CFG, lib=None):
         kin_slope.append(fit_map(age_x(kd, 50.0), kd[TARGET].to_numpy())[1][0])
         kin_prof[k] = kd  # used by the profile generator (synth.py)
     wk = day // 7 - 1
-    votes_all = weekly_votes(weeks, fob, kin_list, float(ana["tau_chosen"][fob]))
+    votes_all = weekly_votes(weeks, fob, kin_list, float(ana["tau_chosen"][fob]), cfg.get("vote_prior", "outbreak"))
     past, stranger = votes_all[wk] if wk in votes_all else ({k: 1 / len(kin_list) for k in kin_list}, 1 / (len(kin_list) + 1))
     recipe = path.loc[path.day <= day, "chosen"].iloc[-1]
 

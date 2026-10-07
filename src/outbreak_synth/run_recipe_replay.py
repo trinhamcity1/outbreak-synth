@@ -18,18 +18,19 @@ import pandas as pd
 from joblib import Parallel, delayed
 from sklearn.metrics import roc_auc_score
 
-from .kinship import votes_from_scores
+from .kinship import start_shares, votes_from_scores
 from .library import OUT as LIB, TARGET
 from .recipe import collected_fields, design, fit_map, kin_prior
 from .run_kinship_replay import day0_of
 
 
-def weekly_votes(weeks, fob, kin, tau):
+def weekly_votes(weeks, fob, kin, tau, prior="outbreak"):
     g = weeks[weeks.fob == fob].set_index("week")
+    lp_all, lp_past = start_shares(kin, prior), start_shares(kin, prior, with_stranger=False)
     out = {}
     for w, r in g.iterrows():
-        v = votes_from_scores({n: r[f"score_total::{n}"] for n in kin + ["STRANGER"]}, tau)
-        past = votes_from_scores({k: r[f"score_total::{k}"] for k in kin}, tau)
+        v = votes_from_scores({n: r[f"score_total::{n}"] for n in kin + ["STRANGER"]}, tau, lp_all)
+        past = votes_from_scores({k: r[f"score_total::{k}"] for k in kin}, tau, lp_past)
         out[w] = (past, v["STRANGER"])
     return out
 

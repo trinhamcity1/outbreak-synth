@@ -7,11 +7,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .kinship import votes_from_scores
+from .kinship import start_shares, votes_from_scores
 
 TAUS = [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0]
 CHECK_WEEKS = [1, 2, 4, 8, 13, 25]
 from .library import family
+
+
+PRIOR = "outbreak"  # set by main(); see kinship.start_shares
 
 
 def vote_table(weeks, meta, tau, part="total"):
@@ -20,9 +23,9 @@ def vote_table(weeks, meta, tau, part="total"):
         kin = list(meta[fob]["kin"])
         best = meta[fob]["hindsight_best_kin"]
         for _, r in g.iterrows():
-            v = votes_from_scores({n: r[f"score_{part}::{n}"] for n in kin + ["STRANGER"]}, tau)
+            v = votes_from_scores({n: r[f"score_{part}::{n}"] for n in kin + ["STRANGER"]}, tau, start_shares(kin, PRIOR))
             # Shares among past outbreaks only, computed directly so they never underflow.
-            past = votes_from_scores({k: r[f"score_{part}::{k}"] for k in kin}, tau)
+            past = votes_from_scores({k: r[f"score_{part}::{k}"] for k in kin}, tau, start_shares(kin, PRIOR, with_stranger=False))
             top = max(past, key=past.get)
             fam_ok = any(family(k) == family(fob) for k in kin)
             groups = {}
@@ -45,9 +48,13 @@ def calibration(t, bins=(0, .2, .4, .6, .8, .95, 1.0001)):
                                                right=("top_is_best", "mean")).round(3)
 
 
-def main(name):
+def main(name, prior="outbreak", out=None):
+    """out: name for the outputs (default: name). With prior="group", writes <out>_analysis.json / _votes.csv."""
+    global PRIOR
+    PRIOR = prior
     meta = json.loads(Path("results", f"{name}.json").read_text())
     weeks = pd.read_csv(Path("results", f"{name}_weeks.csv"))
+    src, name = name, (out or name)
     # tau chosen by leave-one-outbreak-out: for each fob, the tau minimising -log(share of the hindsight
     # best kin) on all OTHER outbreaks.
     # Truth = fob's own disease group (flu incl. H1N1, other respiratory virus, COVID). Outbreaks whose
@@ -100,4 +107,7 @@ def main(name):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    args = sys.argv[1:]
+    prior = args[args.index("--prior") + 1] if "--prior" in args else "outbreak"
+    out = args[args.index("--out") + 1] if "--out" in args else None
+    main(args[0], prior, out)

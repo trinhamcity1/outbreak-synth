@@ -80,8 +80,33 @@ def bernoulli_logpmf(logit, y):
     return -np.logaddexp(0, -logit) * y - np.logaddexp(0, logit) * (1 - y)
 
 
-def votes_from_scores(scores, tau):
-    """scores: dict name -> cumulative log score. Returns dict name -> share (adds to 1)."""
+def votes_from_scores(scores, tau, log_prior=None):
+    """scores: dict name -> cumulative log score. Returns dict name -> share (adds to 1).
+    log_prior: optional dict name -> log starting share (default: every candidate starts equal)."""
     names = list(scores)
     s = tau * np.array([scores[n] for n in names])
+    if log_prior is not None:
+        s = s + np.array([log_prior[n] for n in names])
     return dict(zip(names, np.exp(s - logsumexp(s))))
+
+
+def start_shares(kin, mode="outbreak", with_stranger=True):
+    """Log starting shares for the Kinship Vote.
+    outbreak - every candidate starts equal (Exp. 5-13): groups with more past outbreaks start ahead.
+    group    - (adopted 2026-10-07) every pathogen group starts equal, split equally among its members; the
+               Stranger keeps its old starting share 1/(K+1), so only group fairness changes."""
+    from .library import family
+    K = len(kin)
+    if mode == "outbreak":
+        out = {k: -np.log(K + (1 if with_stranger else 0)) for k in kin}
+        if with_stranger:
+            out["STRANGER"] = -np.log(K + 1)
+        return out
+    fams = [family(k) for k in kin]
+    G = len(set(fams))
+    size = {f: fams.count(f) for f in set(fams)}
+    past_mass = K / (K + 1) if with_stranger else 1.0
+    out = {k: np.log(past_mass) - np.log(G) - np.log(size[f]) for k, f in zip(kin, fams)}
+    if with_stranger:
+        out["STRANGER"] = -np.log(K + 1)
+    return out

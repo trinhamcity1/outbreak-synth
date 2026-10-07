@@ -7,10 +7,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .kinship import votes_from_scores
+from .kinship import start_shares, votes_from_scores
 from .library import family
 
 TAU = 0.01
+PRIOR = "outbreak"  # "--prior group" for the equal-per-group start (adopted 2026-10-07)
 
 
 def table(name):
@@ -20,8 +21,8 @@ def table(name):
     for fob, g in weeks.groupby("fob"):
         kin = list(meta[fob]["kin"])
         for _, r in g.iterrows():
-            v = votes_from_scores({n: r[f"score_total::{n}"] for n in kin + ["STRANGER"]}, TAU)
-            past = votes_from_scores({k: r[f"score_total::{k}"] for k in kin}, TAU)
+            v = votes_from_scores({n: r[f"score_total::{n}"] for n in kin + ["STRANGER"]}, TAU, start_shares(kin, PRIOR))
+            past = votes_from_scores({k: r[f"score_total::{k}"] for k in kin}, TAU, start_shares(kin, PRIOR, with_stranger=False))
             groups = {}
             for k, p in past.items():
                 groups[family(k)] = groups.get(family(k), 0) + p
@@ -45,11 +46,16 @@ def main(names):
             print(f"-- {fob}: {m['n_total']} patients, {len(m['kin'])} possible relatives; hindsight best = {m['hindsight_best_kin']}, "
                   f"novelty gap = {m['novelty_gap']:.3f}")
             print(g.drop(columns="fob").to_string(index=False))
-        t.to_csv(Path("results", f"{name}_votes.csv"), index=False)
+        t.to_csv(Path("results", f"{name}_votes{'_groupprior' if PRIOR == 'group' else ''}.csv"), index=False)
         out[name] = {f: {"hindsight_best": meta[f]["hindsight_best_kin"], "novelty_gap": meta[f]["novelty_gap"],
                          "final_week": t[t.fob == f].iloc[-1].to_dict()} for f in meta}
-    Path("results", "exp13_vote_small_summary.json").write_text(json.dumps(out, indent=2, default=str))
+    Path("results", f"exp13_vote_small_summary{'_groupprior' if PRIOR == 'group' else ''}.json").write_text(json.dumps(out, indent=2, default=str))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    args = sys.argv[1:]
+    if "--prior" in args:
+        i = args.index("--prior")
+        PRIOR = args[i + 1]
+        args = args[:i] + args[i + 2:]
+    main(args)

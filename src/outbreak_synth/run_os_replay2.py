@@ -39,6 +39,7 @@ def age_x(df, med):
 
 
 def run_one(fob, cfg, kin_list, tau, weeks_path):
+    prior = cfg.get("vote_prior", "outbreak")
     lib = pd.read_parquet(LIB)
     weeks = pd.read_csv(weeks_path)
     d = lib[lib.outbreak == fob]
@@ -69,7 +70,7 @@ def run_one(fob, cfg, kin_list, tau, weeks_path):
         kin_fields[k] = collected_fields(kd)
         kin_slope.append(fit_map(age_x(kd, 50.0), kd[TARGET].to_numpy())[1][0])
     slope_prior = float(np.median(kin_slope))
-    votes = weekly_votes(weeks, fob, kin_list, tau)
+    votes = weekly_votes(weeks, fob, kin_list, tau, prior)
     mu_c, _ = consensus_prior(kin_coefs, kin_fields, meta, cfg["min_agree_kin"], cfg["agree_share"])
     is_age = np.array([m[1] == "age" for m in meta])
 
@@ -141,7 +142,7 @@ def main(cfg_path):
     cfg = tomllib.loads(Path(cfg_path).read_text())
     src = cfg["kinship_run"]
     meta5 = json.loads(Path("results", f"{src}.json").read_text())
-    ana = json.loads(Path("results", f"{src}_analysis.json").read_text())
+    ana = json.loads(Path("results", f"{cfg.get('kinship_analysis', src)}_analysis.json").read_text())
     jobs = [(f, list(m["kin"]), float(ana["tau_chosen"][f])) for f, m in meta5.items() if not cfg.get("only") or f in cfg["only"]]
     res = Parallel(n_jobs=cfg["n_jobs"])(delayed(run_one)(f, cfg, kin, tau, f"results/{src}_weeks.csv") for f, kin, tau in jobs)
     out = {f: r for f, r in res if r is not None}
