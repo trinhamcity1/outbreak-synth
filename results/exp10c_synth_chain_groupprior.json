@@ -657,6 +657,60 @@
         "os_synth_only": 0.8014641608391609,
         "real_plus_os_synth": 0.8008085664335665
       }
+    },
+    "flu_2022": {
+      "green_day": 20,
+      "recipe": "kin",
+      "early_n": 3293,
+      "early_deaths": 543,
+      "test_n": 1648,
+      "test_deaths": 176,
+      "fidelity": {
+        "os_vs_early": {
+          "age_mean_diff": -0.09294594202695805,
+          "age_ks": 0.012324670513209846,
+          "age_band_tvd": 0.006157412693592455,
+          "death_rate_diff": -0.002115232310962639,
+          "death_by_band_max_diff": 0.018038347285984344,
+          "yes_rate_mean_abs_diff": 0.0011048417096872138,
+          "yes_rate_max_abs_diff": 0.0033117886425750864,
+          "yes_rate_worst_field": "DESC_RESP",
+          "corr_mean_abs_diff": 0.009106678210757868,
+          "corr_max_abs_diff": 0.0456443302785243
+        },
+        "os_vs_later": {
+          "age_mean_diff": -11.31448100937429,
+          "age_ks": 0.15806097087378643,
+          "age_band_tvd": 0.15285456310679613,
+          "death_rate_diff": 0.055983883495145645,
+          "death_by_band_max_diff": 0.0581856899703079,
+          "yes_rate_mean_abs_diff": 0.016118895631067963,
+          "yes_rate_max_abs_diff": 0.05699650485436891,
+          "yes_rate_worst_field": "FEBRE",
+          "corr_mean_abs_diff": 0.02992252222389727,
+          "corr_max_abs_diff": 0.1375299901369337
+        },
+        "early_vs_later": {
+          "age_mean_diff": -11.221535067347332,
+          "age_ks": 0.1560750370748189,
+          "age_band_tvd": 0.1533408613151168,
+          "death_rate_diff": 0.058099115806108284,
+          "death_by_band_max_diff": 0.06409376786735277,
+          "yes_rate_mean_abs_diff": 0.01696718860100419,
+          "yes_rate_max_abs_diff": 0.05792184952488211,
+          "yes_rate_worst_field": "FEBRE",
+          "corr_mean_abs_diff": 0.031876727509367354,
+          "corr_max_abs_diff": 0.14589598254612193
+        }
+      },
+      "auc": {
+        "gold": 0.7758615365612649,
+        "age_only": 0.7096772325839921,
+        "os_model": 0.7734375,
+        "real_early": 0.7750046319169961,
+        "os_synth_only": 0.7693459733201582,
+        "real_plus_os_synth": 0.7700060214920947
+      }
     }
   }
 }

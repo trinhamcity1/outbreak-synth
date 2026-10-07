@@ -70,5 +70,11 @@
     "rows": 50000,
     "sha256": "07f7516d660df816843a9f11be02f0108436b022e9554aa4bff4c6ab36533936",
     "provenance": "SYNTHETIC - Outbreak Synth (OS) v1; outbreak=flu_2021; day=32 (day 0 = 2021-04-07); learned from 104 real records (20 deaths) entered up to that day; recipe=kin; profile=dependency chain; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/os/SYNTHETIC_os_chain_flu_2022_day20.parquet",
+    "rows": 50000,
+    "sha256": "4c1ba73e98bc258eac6a5a57e76e70ef99ff46e81824a2bcb7474a770e5c3895",
+    "provenance": "SYNTHETIC - Outbreak Synth (OS) v1; outbreak=flu_2022; day=20 (day 0 = 2022-01-01); learned from 3293 real records (543 deaths) entered up to that day; recipe=kin; profile=dependency chain; seed=0. Not real patients."
   }
 ]
