@@ -23,10 +23,13 @@ for c in cats:  # integer-code the categories; synthcity treats low-cardinality 
     num[c] = num[c].astype(str).map({v: i for i, v in enumerate(codes[c])}).astype(int)
 num["death"] = num["death"].astype(int)
 num["age"] = num["age"].astype(float)
+const = {c: num[c].iloc[0] for c in num.columns if num[c].nunique() == 1}  # synthcity drops these; added back as is
 t = time.time()
 m = Plugins().get(plugin, random_state=seed, **kw)
-m.fit(GenericDataLoader(num))  # unconditional, like CTGAN: death is an ordinary column
+m.fit(GenericDataLoader(num.drop(columns=list(const))))  # unconditional, like CTGAN: death is an ordinary column
 out = m.generate(count=n, random_state=seed).dataframe()
+for c, v in const.items():
+    out[c] = v
 for c in cats:
     out[c] = [codes[c][int(np.clip(round(v), 0, len(codes[c]) - 1))] for v in out[c]]
 out["death"] = out["death"].round().clip(0, 1).astype(int)

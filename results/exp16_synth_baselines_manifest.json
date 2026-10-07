@@ -52,5 +52,77 @@
     "rows": 50000,
     "sha256": "ae5dc67bb36765398fe6a8de5ac01828e4954faf9e4687cb19ca453973ce7ad8",
     "provenance": "SYNTHETIC - ctgan baseline; outbreak=covid_2021; trained on 10000 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_tvae_covid_2021_day28.parquet",
+    "rows": 50000,
+    "sha256": "d239c70dea875e6b5808152f1dbb0d0ba15b4a9f058eb68bfb2b9debb7917845",
+    "provenance": "SYNTHETIC - tvae baseline; outbreak=covid_2021; trained on 10000 of the 25045 real records with a known outcome on day 28; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bootstrap_covid_2022_day30.parquet",
+    "rows": 50000,
+    "sha256": "ec9589d6c16a0c1d6ccbf756f4010e781bdc2902624cd2e6e80f9b33213efc60",
+    "provenance": "SYNTHETIC - bootstrap baseline; outbreak=covid_2022; trained on 25656 of the 25656 real records with a known outcome on day 30; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bayesian_network_covid_2022_day30.parquet",
+    "rows": 50000,
+    "sha256": "983a4a73b7ca1253f2cc2d8085ce16075dc5751918f0e8765efceae5d739526a",
+    "provenance": "SYNTHETIC - bayesian_network baseline; outbreak=covid_2022; trained on 10000 of the 25656 real records with a known outcome on day 30; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_arf_covid_2022_day30.parquet",
+    "rows": 50000,
+    "sha256": "230a73a49ca721cad59fd0003cca1b91ce20d960cb0aec0326fddff61d54bb8b",
+    "provenance": "SYNTHETIC - arf baseline; outbreak=covid_2022; trained on 10000 of the 25656 real records with a known outcome on day 30; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_ctgan_covid_2022_day30.parquet",
+    "rows": 50000,
+    "sha256": "66a8f11de22d87e87958ee6d571b19f9fd8eb819887073d043544700f0005edd",
+    "provenance": "SYNTHETIC - ctgan baseline; outbreak=covid_2022; trained on 10000 of the 25656 real records with a known outcome on day 30; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_tvae_covid_2022_day30.parquet",
+    "rows": 50000,
+    "sha256": "e2ed81eac83d3fbf685844107a473d7e5749f1b8161e413d9e1abf5a5ac8dbed",
+    "provenance": "SYNTHETIC - tvae baseline; outbreak=covid_2022; trained on 10000 of the 25656 real records with a known outcome on day 30; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bootstrap_flu_2013_day70.parquet",
+    "rows": 50000,
+    "sha256": "9e502cfc889a19be06ab9b18a11602b0b011188ba127060cf02773dcfd82f628",
+    "provenance": "SYNTHETIC - bootstrap baseline; outbreak=flu_2013; trained on 1786 of the 1786 real records with a known outcome on day 70; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bayesian_network_flu_2013_day70.parquet",
+    "rows": 50000,
+    "sha256": "7ce4cde3833c737697b270eabfb95deba26c75f9de29a0997eecf1dffa94e1fb",
+    "provenance": "SYNTHETIC - bayesian_network baseline; outbreak=flu_2013; trained on 1786 of the 1786 real records with a known outcome on day 70; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_arf_flu_2013_day70.parquet",
+    "rows": 50000,
+    "sha256": "6a58871a4caf077188900b97222dc9d84d59813b6100238124a05eb9812424cc",
+    "provenance": "SYNTHETIC - arf baseline; outbreak=flu_2013; trained on 1786 of the 1786 real records with a known outcome on day 70; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_ctgan_flu_2013_day70.parquet",
+    "rows": 50000,
+    "sha256": "4f3ee3df9962eef9df2a18edd2d8823778d6a12e00e045a7351225f2be0a37c3",
+    "provenance": "SYNTHETIC - ctgan baseline; outbreak=flu_2013; trained on 1786 of the 1786 real records with a known outcome on day 70; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_tvae_flu_2013_day70.parquet",
+    "rows": 50000,
+    "sha256": "6a99341df78ad78900f9fb69ff1f9c851b933cebc1767232c484516c94dc838f",
+    "provenance": "SYNTHETIC - tvae baseline; outbreak=flu_2013; trained on 1786 of the 1786 real records with a known outcome on day 70; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bootstrap_flu_2014_day46.parquet",
+    "rows": 50000,
+    "sha256": "df2f1e0025a69a44d975b638245aaf208ed844ea1f7f2b54ef294fac2fb091c9",
+    "provenance": "SYNTHETIC - bootstrap baseline; outbreak=flu_2014; trained on 194 of the 194 real records with a known outcome on day 46; seed=0. Not real patients."
   }
 ]
