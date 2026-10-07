@@ -1,0 +1,20 @@
+[
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bootstrap_covid_2020_day54.parquet",
+    "rows": 50000,
+    "sha256": "a71c6fd26c7e389ccbdb3165a40414b037000732b3943641ca52c2d9ad931227",
+    "provenance": "SYNTHETIC - bootstrap baseline; outbreak=covid_2020; trained on 11201 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_bayesian_network_covid_2020_day54.parquet",
+    "rows": 50000,
+    "sha256": "babb4159db32c48d67027ea71f437074af48166b46fa6bceda4dfb29fd0974de",
+    "provenance": "SYNTHETIC - bayesian_network baseline; outbreak=covid_2020; trained on 10000 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  },
+  {
+    "file": "data/synthetic/baselines/SYNTHETIC_arf_covid_2020_day54.parquet",
+    "rows": 50000,
+    "sha256": "c31b445e2e91657729d13be01c3dc828a03cd840040d69c0f73ba4e0769faff4",
+    "provenance": "SYNTHETIC - arf baseline; outbreak=covid_2020; trained on 10000 of the 11201 real records with a known outcome on day 54; seed=0. Not real patients."
+  }
+]
