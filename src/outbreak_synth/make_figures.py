@@ -265,9 +265,11 @@ def fig_patient_ci():
     ax.invert_yaxis()
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("AUC on later patients, with 95% bootstrap interval over test patients")
-    ax.legend(loc="lower left", fontsize=8)
-    ax.set_title("On the Green Light day, OS is close to the best possible model")
     fig.tight_layout()
+    h, l = ax.get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=3, fontsize=8, bbox_to_anchor=(0.55, 1.04))
+    fig.suptitle("On the Green Light day, OS is close to the best possible model", x=0.01, ha="left", y=1.09,
+                 fontsize=12, weight="bold")
     save(fig, "fig7_green_day_ci")
 
 

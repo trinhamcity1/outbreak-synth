@@ -2,6 +2,71 @@
 
 Running log of what was run, on which data, and what came out. Newest entry first.
 
+## 2026-10-08 — Exp. 17: confidence intervals, and figures
+
+**What was run:**
+- `analyse_ci.py 1000` → `results/ci_summary.json`.
+- `make_figures.py` → `figures/fig1`–`fig7` (PNG and PDF), drawn only from committed results and the library.
+
+**Two levels of interval:**
+- **Patients:** on each Green Light day (10 deaths, 0.99), the later test patients are resampled.
+  - 1,000 stratified paired resamples, seed 0.
+  - Models compared: OS's released model (`os_core.FINAL_CFG`), gold (same design on all of fob's other records,
+    strength 10) and real data alone (ridge on the records with a known outcome).
+- **Outbreaks:** headline averages use 2,000 bootstrap resamples over outbreaks, seed 0; rates use exact
+  Clopper–Pearson intervals.
+
+### Outbreak level
+| Result | Value | 95% CI |
+|---|---:|---:|
+| Kinship Vote right group, weeks 1 / 2 / 4 (21 outbreaks with an earlier group member) | 19/21 = 90% | [70%, 99%] |
+| Right group, week 8 onwards | 20/21 = 95% | [76%, 100%] |
+| Right when the vote is ≥ 95% sure (416 outbreak-weeks) | 97.6% | [95.6%, 98.8%] (weeks are not independent) |
+| Green Light false greens, adopted rule, in-sample | 0/22 | [0%, 15%] |
+| Green Light false greens, leave-one-outbreak-out | 1/22 | [0.1%, 23%] |
+| Median Green Light day | 38 | [32, 46] |
+| OS mean gap to gold, days 0–90 | 0.0052 | [−0.0035, 0.0153] |
+| Real data alone, mean gap to gold | 0.0520 | [0.0393, 0.0664] |
+| OS days below "rank by age", per outbreak | 2.9 | [0.3, 6.3] |
+| Synthetic-only AUC: OS / ARF / real records OS had | 0.796 / 0.770 / 0.730 | [0.781, 0.811] / [0.749, 0.789] / [0.705, 0.753] |
+| Outbreaks < 1,000 records: real + OS synthetic minus real alone (15) | +0.086 | [0.064, 0.109] |
+
+### Patient level, on the Green Light day (22 outbreaks; `figures/fig7_green_day_ci.png`)
+| | Count |
+|---|---:|
+| Green is firmly correct: gold − OS > 0.02 in under 2.5% of resamples | 14 |
+| Verdict uncertain at this test size | 8 |
+| Green is firmly false | 0 |
+| OS beats real data alone with the interval above 0 | 18 |
+
+- COVID 2020 on day 54: OS 0.756 [0.752, 0.758], gold 0.767; gap 0.012 [0.010, 0.012].
+- Least certain: other virus 2017 on day 46. OS 0.778 against gold 0.796; gap 0.018 [−0.006, 0.047]; gap above
+  0.02 in 42% of resamples.
+- Other uncertain cases: other virus 2021 (28%), other virus 2014 (16%), other virus 2022 (15%), other virus 2016
+  (11%).
+
+- **Plain reading:**
+  - The test windows of small seasons hold only a few hundred patients, so intervals there are wide (often ±0.05
+    AUC).
+  - No green is clearly false. About a third of them cannot be called clearly right either, mostly small
+    other-virus seasons.
+  - OS's mean gap to gold over days 0–90 is not distinguishable from 0. Real data alone's clearly is.
+  - With 22–23 outbreaks, rate intervals stay wide: up to 15–23% false greens cannot be ruled out. The frozen test
+    and more outbreaks are what narrow them.
+
+### Figures
+| File | Shows |
+|---|---|
+| `fig1_replay_curves` | AUC by day: OS, real data alone, fine-tuning baseline, with gold, rank by age and Green Light (4 outbreaks) |
+| `fig2_kinship_vote` | Vote share by group and Stranger by week (COVID 2020, flu 2016) |
+| `fig3_baselines_forest` | Exp. 15 gap vs OS with 95% intervals, with and without fallback |
+| `fig4_readiness` | Ready day per outbreak: Green Light adopted and old, and Riley |
+| `fig5_synthetic_generators` | Exp. 16 synthetic-only AUC per outbreak and mean with 95% interval |
+| `fig6_outcome_timing` | COVID 2020: share of the outcomes the first replays used that were actually known |
+| `fig7_green_day_ci` | Patient-level intervals on the Green Light day: gold, OS, real data alone |
+
+---
+
 ## 2026-10-07 — Exp. 16: baselines for step 4 (synthetic data generators)
 
 **What was run:** `run_synth_baselines.py` with `experiments/exp16_synth_baselines.toml` →
